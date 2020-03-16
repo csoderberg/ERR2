@@ -35,8 +35,23 @@ osf_upload('https://osf.io/q6pef/', oath = 'deidentified_raw_numeric.csv')
 osf_retrieve_file("") %>%
   osf_download()
 
-deidentified_raw_numeric <- read_csv(here::here('/deidentified_raw_numeric.csv'))
+ERR2_numeric_data <- read_csv(here::here('/deidentified_raw_numeric.csv'))
 
+#count how many opened survey but didn't fill out field question
+sum(is.na(ERR2_numeric_data))
+
+#count how many did not meet field criterion
+sum(ERR2_numeric_data$Field == 4)
+
+#count how many consent by didn't answer any questions after that
+ERR2_numeric_data %>%
+  filter(Consent == 2) %>%
+  mutate(num_NA = rowSums(is.na(ERR2_numeric_data[,15:81])))
+
+
+#filter out those that never consented
+numeric_data <- ERR2_numeric_data %>%
+                    filter(Consent == 2)
 
 #create difference scores
 numeric_data <- numeric_data %>%
@@ -58,6 +73,11 @@ numeric_data <- numeric_data %>%
                            diff_abstract_aligned = RRAbstractAligned - AltAbstractAligned,
                            diff_field_importance = RRFieldImportance - AltFieldImportance,
                            diff_inspire = RRInspire - AltInspire,
-                           diff_overall_quality = RROverallQuality - AltOverallQuality)
+                           diff_overall_quality = RROverallQuality - AltOverallQuality) %>%
+                  select(-`Altresultcomment - Parent Topics`, `Altresultcomment - Topics`) #remove empty added qualtrics columns
+
+# write out clean data file
+write_csv(numeric_data, 'cleaned_numeric_data.csv')
+
 
 
