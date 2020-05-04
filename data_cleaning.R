@@ -49,12 +49,15 @@ ERR2_numeric_data %>%
   mutate(num_NA = rowSums(is.na(ERR2_numeric_data[,15:81])))
 
 
-#filter out those that never consented
+#filter out those that never consented & select only pertinent variables
 numeric_data <- ERR2_numeric_data %>%
-                    filter(Consent == 2)
+                    filter(Consent == 2) %>%
+                    select(-c(Status, Progress, `Duration (in seconds)`, Finished, RecordedDate,
+                              ResponseId, DistributionChannel, UserLanguage, Consent, 
+                              FromLink, `Altresultcomment - Parent Topics`, `Altresultcomment - Topics`))
 
 #create difference scores
-numeric_data <- numeric_data %>%
+numeric_data_wide <- numeric_data %>%
                     mutate(diff_question_quality = RRQuestionQuality - AltQuestionQuality,
                            diff_method_quality = RRMethodQuality - AltMethodQuality,
                            diff_method_rigor = RRMethodRigor - AltMethodRigor,
@@ -73,11 +76,19 @@ numeric_data <- numeric_data %>%
                            diff_abstract_aligned = RRAbstractAligned - AltAbstractAligned,
                            diff_field_importance = RRFieldImportance - AltFieldImportance,
                            diff_inspire = RRInspire - AltInspire,
-                           diff_overall_quality = RROverallQuality - AltOverallQuality) %>%
-                  select(-`Altresultcomment - Parent Topics`, `Altresultcomment - Topics`) #remove empty added qualtrics columns
+                           diff_overall_quality = RROverallQuality - AltOverallQuality)
+
+# write out clean data file in wide format
+write_csv(numeric_data_wide, 'cleaned_numeric_data_wide.csv')
+
+# make long_format file
+numeric_data_long <- numeric_data %>%
+                        pivot_longer(cols = RRQuestionQuality:AltOverallQuality, names_to = 'question', values_to = 'response') %>%
+                        mutate(article_type = case_when(grepl('^RR', question) ~ 'RR',
+                                                        grepl('^Alt', question) ~ 'nonRR'))
 
 # write out clean data file
-write_csv(numeric_data, 'cleaned_numeric_data.csv')
+write_csv(numeric_data_long, 'cleaned_numeric_data_long.csv')
 
 
 
