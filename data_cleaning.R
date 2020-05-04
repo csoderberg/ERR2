@@ -6,10 +6,6 @@ library(here)
 
 #### Creating deidentified raw data set ####
 
-#download raw data
-osf_retrieve_file("https://osf.io/wjkg6/") %>%
-  osf_download()
-
 #read in raw data
 raw_numeric <- read_csv(here::here('/ERR2_rawdata_numeric.csv'))
 
@@ -24,9 +20,14 @@ raw_deidentified_numeric <- raw_numeric %>%
                                 slice(-1:-2) %>% #take out first 2 rows added by qualtrics
                                 filter(FirstFamiliar != '1' & SecondFamiliar != '1')
 
+# remove free response variables in line with IRB for public posting on OSF
+raw_deidentified_numeric <- raw_deidentified_numeric %>%
+                              select(-c(RRintrocomment, RRresultcomment, RRabstractcomment, Altintrocomment, Altresultcomment, Altabstractcomment,
+                                        `Altresultcomment - Parent Topics`, `Altresultcomment - Topics`))
+
 # created and upload deidentified raw data
 write_csv(raw_deidentified_numeric, 'deidentified_raw_numeric.csv')
-osf_upload('https://osf.io/q6pef/', oath = 'deidentified_raw_numeric.csv')
+osf_upload('https://osf.io/q6pef/', 'deidentified_raw_numeric.csv')
 
 
 #### Creating Cleaned data file ####
