@@ -23,7 +23,28 @@ raw_deidentified_numeric <- raw_numeric %>%
 # remove free response variables in line with IRB for public posting on OSF
 raw_deidentified_numeric <- raw_deidentified_numeric %>%
                               select(-c(RRintrocomment, RRresultcomment, RRabstractcomment, Altintrocomment, Altresultcomment, Altabstractcomment,
-                                        `Altresultcomment - Parent Topics`, `Altresultcomment - Topics`))
+                                        `Altresultcomment - Parent Topics`, `Altresultcomment - Topics`)) %>%
+                              mutate_at(vars(RRQuestionQuality:AltOverallQuality), as.integer)
+
+# non pre-reg exclusions based on things said in comments (either stated responses were meaningless of gave specific indications that rated wrong study)
+raw_deidentified_numeric <- raw_deidentified_numeric %>%
+                                
+                                # excluded for comments specifically stating that responses were meaningless and chosen just to continue on in the survey
+                                mutate_at(vars(AltQuestionQuality:AltOverallQuality), funs(case_when(participant_id == 62 ~ NA_integer_, 
+                                                                                                                     TRUE ~ .))) %>%
+                                
+                                # excluded specific responses b/c comments specifically stated that for those items they could't evaluate them and so chose the midpoint of the scale
+                                mutate_at(vars(AltIntroImportance, AltQuestionNovelty, AltWillLearn, AltOverallImport, AltFieldImportance), funs(case_when(participant_id == 2696 ~ NA_integer_,
+                                                                                                                                                                              TRUE ~ .))) %>%                              
+  
+                                # excluded for specifically stating that they rated the first study, rather than the last study that was specific in the instructions
+                                filter(participant_id != 6933) %>%
+  
+                                # excluded b/c said they couldn't scroll and so couldn't answer questions, and that questions were impossible to meaningfully answer and they hoped we wouldn't try to interpret their data
+                                filter(participant_id != 5204)
+  
+                                
+
 
 # created and upload deidentified raw data
 write_csv(raw_deidentified_numeric, 'deidentified_raw_numeric.csv')
