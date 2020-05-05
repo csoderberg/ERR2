@@ -24,7 +24,8 @@ raw_deidentified_numeric <- raw_numeric %>%
 raw_deidentified_numeric <- raw_deidentified_numeric %>%
                               select(-c(RRintrocomment, RRresultcomment, RRabstractcomment, Altintrocomment, Altresultcomment, Altabstractcomment,
                                         `Altresultcomment - Parent Topics`, `Altresultcomment - Topics`)) %>%
-                              mutate_at(vars(RRQuestionQuality:AltOverallQuality), as.integer)
+                              mutate_at(vars(RRQuestionQuality:AltOverallQuality), as.integer) %>%
+                              mutate(participant_id = as.integer(participant_id))
 
 # non pre-reg exclusions based on things said in comments (either stated responses were meaningless of gave specific indications that rated wrong study)
 raw_deidentified_numeric <- raw_deidentified_numeric %>%
@@ -48,13 +49,15 @@ raw_deidentified_numeric <- raw_deidentified_numeric %>%
 
 # created and upload deidentified raw data
 write_csv(raw_deidentified_numeric, 'deidentified_raw_numeric.csv')
-osf_upload('https://osf.io/q6pef/', 'deidentified_raw_numeric.csv')
+
+osf_retrieve_node('https://osf.io/q6pef/') %>% 
+  osf_upload('deidentified_raw_numeric.csv')
 
 
 #### Creating Cleaned data file ####
 
 #download & read in deidentifed raw data
-osf_retrieve_file("") %>%
+osf_retrieve_file("https://osf.io/e6kdw/") %>%
   osf_download()
 
 ERR2_numeric_data <- read_csv(here::here('/deidentified_raw_numeric.csv'))
