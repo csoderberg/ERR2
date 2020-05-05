@@ -1,6 +1,7 @@
 # load libraries
 library(brms)
 library(tidyverse)
+library(ggplot2)
 
 # load data
 long_data <- read_csv(here::here('cleaned_numeric_data_long.csv'), col_types = cols(article_type = col_factor(),
