@@ -37,6 +37,7 @@ within_model_diffs <- brm(diff_question_quality ~ Field + Order + Match +
 
 summary(within_model_diffs)
 pp_check(within_model_diffs)
+pp_check(within_model_diffs, type = "stat", stat = 'median', nsamples = 100)
 WAIC(within_model_diffs)
 loo(within_model_diffs)
 
@@ -52,6 +53,7 @@ within_model <- brm(response ~ Field + article_type + Order + Match +
 
 summary(within_model)
 pp_check(within_model)
+pp_check(within_model, type = "stat", stat = 'median', nsamples = 100)
 WAIC(within_model)
 loo(within_model)
 
