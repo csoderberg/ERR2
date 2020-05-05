@@ -69,9 +69,10 @@ sum(is.na(ERR2_numeric_data))
 sum(ERR2_numeric_data$Field == 4)
 
 #count how many consent by didn't answer any questions after that
-ERR2_numeric_data %>%
+nrow(ERR2_numeric_data %>%
   filter(Consent == 2) %>%
-  mutate(num_NA = rowSums(is.na(ERR2_numeric_data[,15:81])))
+  mutate(num_NA = rowSums(is.na(ERR2_numeric_data[,15:75]))) %>%
+  filter(num_NA == 61))
 
 
 #filter out those that never consented & select only pertinent variables
@@ -79,7 +80,7 @@ numeric_data <- ERR2_numeric_data %>%
                     filter(Consent == 2) %>%
                     select(-c(Status, Progress, `Duration (in seconds)`, Finished, RecordedDate,
                               ResponseId, DistributionChannel, UserLanguage, Consent, 
-                              FromLink, `Altresultcomment - Parent Topics`, `Altresultcomment - Topics`))
+                              FromLink))
 
 #create difference scores
 numeric_data_wide <- numeric_data %>%
