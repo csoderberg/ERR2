@@ -104,8 +104,11 @@ numeric_data_wide <- numeric_data %>%
                            diff_inspire = RRInspire - AltInspire,
                            diff_overall_quality = RROverallQuality - AltOverallQuality)
 
-# write out clean data file in wide format
+# write out clean data file in wide format & upload to OSF
 write_csv(numeric_data_wide, 'cleaned_numeric_data_wide.csv')
+
+osf_retrieve_node('https://osf.io/q6pef/') %>% 
+  osf_upload('cleaned_numeric_data_wide.csv')
 
 # make long_format file
 numeric_data_long <- numeric_data %>%
@@ -113,8 +116,11 @@ numeric_data_long <- numeric_data %>%
                         mutate(article_type = case_when(grepl('^RR', question) ~ 'RR',
                                                         grepl('^Alt', question) ~ 'nonRR'))
 
-# write out clean data file
+# write out clean data file & upload to OSF
 write_csv(numeric_data_long, 'cleaned_numeric_data_long.csv')
+
+osf_retrieve_node('https://osf.io/q6pef/') %>% 
+  osf_upload('cleaned_numeric_data_long.csv')
 
 
 
