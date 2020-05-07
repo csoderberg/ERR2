@@ -2,6 +2,8 @@
 library(brms)
 library(tidyverse)
 library(ggplot2)
+library(bayesplot)
+library(tidybayes)
 
 # load data
 long_data <- read_csv(here::here('cleaned_numeric_data_long.csv'), col_types = cols(article_type = col_factor(),
@@ -12,7 +14,11 @@ wide_data <- read_csv(here::here('cleaned_numeric_data_wide.csv'), col_types = c
                                                                                     Match = col_factor(),
                                                                                     Order = col_factor()))
 
-options(contrasts = rep("contr.sum", 2))
+# set up contrasts codes
+contrasts(wide_data$Field) <- contr.sum(3)
+contrasts(wide_data$keyword_batch_comp) <- contr.sum(2)
+contrasts(wide_data$Order) <- contr.sum(2)
+contrasts(wide_data$Match) <- contr.sum(2)
 
 ## check distribution of question quality variable
 ggplot(long_data %>% filter(grepl('QuestionQuality', question)), aes(x = response)) +
@@ -26,8 +32,8 @@ priors <- c(set_prior("normal(0,2)", "b"),
 
 ### within-subjects models
 
-# difference score model
-within_model_diffs <- brm(diff_question_quality ~ Field + Order + Match +
+# difference score model, pooled across batches
+within_model_diffs <- brm(diff_question_quality ~ Field + keyword_batch_comp + Order + Match +
                                                     Order*Match +
                                                     (1|RR),
                            data = wide_data,
@@ -42,7 +48,69 @@ pp_check(within_model_diffs, type = "stat", stat = 'median', nsamples = 100)
 WAIC(within_model_diffs)
 loo(within_model_diffs)
 
-# no different score model
+
+# differenc score model for batch 1
+within_model_diffs_keywords1 <- brm(diff_question_quality ~ Field + Order + Match +
+                            Order*Match +
+                            (1|RR),
+                          data = wide_data %>% filter(keyword_batch_comp == 1),
+                          prior = priors, 
+                          family = 'gaussian',
+                          chains = 4)
+
+summary(within_model_diffs_keywords1)
+pp_check(within_model_diffs_keywords1)
+WAIC(within_model_diffs_keywords1)
+loo(within_model_diffs_keywords1)
+
+# differenc score model for batched 2+3
+within_model_diffs_keywords2 <- brm(diff_question_quality ~ Field + Order + Match +
+                                      Order*Match +
+                                      (1|RR),
+                                    data = wide_data %>% filter(keyword_batch_comp == 2),
+                                    prior = priors, 
+                                    family = 'gaussian',
+                                    chains = 4)
+
+summary(within_model_diffs_keywords2)
+pp_check(within_model_diffs_keywords2)
+WAIC(within_model_diffs_keywords2)
+loo(within_model_diffs_keywords2)
+
+
+posteriors_keywords2 <- suppressMessages( 
+  mcmc_areas(posterior_samples(within_model_diffs_keywords2),
+             regex_pars = "b_",
+             prob=.9) +
+             xlim(-2, 2) +
+             labs(title = 'Batch 2')
+)
+
+posteriors_keywords1 <- suppressMessages( 
+  mcmc_areas(posterior_samples(within_model_diffs_keywords1),
+             regex_pars = "b_",
+             prob=.9) +
+             xlim(-2, 2) +
+             labs(title = 'Batch 1')
+)
+
+posteriors_pooled <- suppressMessages( 
+  mcmc_areas(posterior_samples(within_model_diffs),
+             regex_pars = "b_",
+             prob=.9) +
+             xlim(-2, 2) +
+             labs(title = 'Pooled Batched')
+)
+
+bind_rows(tidy(within_model_diffs) %>% mutate(model = 'within_diff_pooled'),
+          tidy(within_model_diffs_keywords1) %>% mutate(model = 'batch1'),
+          tidy(within_model_diffs_keywords2) %>% mutate(model = 'batch2')) %>%
+  filter(grepl('b_', term)) %>%
+  dotwhisker::dwplot() 
+
+posteriors_keywords1 / posteriors_keywords2
+
+# no difference score model, pooled across batches
 within_model <- brm(response ~ Field + article_type + Order + Match +
                                   article_type*Order + article_type*Match + Order*Match +
                                   article_type*Order*Match + 
