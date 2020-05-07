@@ -59,10 +59,10 @@ numeric_data <- ERR2_numeric_data %>%
                     filter(Consent == 2) %>%
                     filter(RR != 'RR38') %>% #filter out anyone who got RR38 b/c it was discovered to have been erroneasly labeled a RR in the online first publication version
                     # excluded for comments specifically stating that responses were meaningless and chosen just to continue on in the survey
-                    mutate_at(vars(AltQuestionQuality:AltOverallQuality), funs(case_when(participant_id == 62 ~ NA_integer_, 
+                    mutate_at(vars(AltQuestionQuality:AltOverallQuality), funs(case_when(participant_id == 62 ~ NA_real_, 
                                                                                          TRUE ~ .))) %>%
                     # excluded specific responses b/c comments specifically stated that for those items they could't evaluate them and so chose the midpoint of the scale
-                    mutate_at(vars(AltIntroImportance, AltQuestionNovelty, AltWillLearn, AltOverallImport, AltFieldImportance), funs(case_when(participant_id == 2696 ~ NA_integer_,
+                    mutate_at(vars(AltIntroImportance, AltQuestionNovelty, AltWillLearn, AltOverallImport, AltFieldImportance), funs(case_when(participant_id == 2696 ~ NA_real_,
                                                                                                                                                TRUE ~ .))) %>%                              
                     # excluded for specifically stating that they rated the first study, rather than the last study that was specific in the instructions
                     filter(participant_id != 6933) %>%
