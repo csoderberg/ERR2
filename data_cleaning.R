@@ -72,6 +72,14 @@ numeric_data <- ERR2_numeric_data %>%
                                                 ResponseId, DistributionChannel, UserLanguage, Consent, 
                                                 FromLink))
 
+# add variable for which batches of keywords were available
+numeric_data <- numeric_data %>%
+                  mutate(keyword_phases = case_when(StartDate <= '2019-11-20 15:15:00' ~ 'first',
+                                                    StartDate > '2019-11-20 15:15:00' & StartDate <= '2019-12-09 09:00:00' ~ 'second',
+                                                    StartDate > '2019-12-09 12:00:00' ~ 'third'),
+                         keyword_batch_comp = case_when(keyword_phases == 'first' ~ 1,
+                                                        keyword_phases == 'second' | keyword_phases == 'third' ~ 2))
+
 #create difference scores
 numeric_data_wide <- numeric_data %>%
                     mutate(diff_question_quality = RRQuestionQuality - AltQuestionQuality,
