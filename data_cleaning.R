@@ -78,6 +78,7 @@ nrow(ERR2_numeric_data %>%
 #filter out those that never consented & select only pertinent variables
 numeric_data <- ERR2_numeric_data %>%
                     filter(Consent == 2) %>%
+                    filter(RR != 'RR38') %>% #filter out anyone who got RR38 b/c it was discovered to have been erroneasly labeled a RR in the online first publication version
                     select(-c(Status, Progress, `Duration (in seconds)`, Finished, RecordedDate,
                               ResponseId, DistributionChannel, UserLanguage, Consent, 
                               FromLink))
