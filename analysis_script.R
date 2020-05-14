@@ -155,9 +155,9 @@ bind_rows(tidy(within_model_diffs) %>% mutate(model = 'within_diff_pooled'),
 posteriors_keywords1 / posteriors_keywords2
 
 
-### between-subjects models
+### between-subjects models comparing pooled, batch 1, batch 2 + 3
 
-between_model <- brm(response ~ Field + article_type + Match + article_type*Match +
+between_model <- brm(response ~ Field + keyword_batch_comp + article_type + Match + article_type*Match +
                                             (article_type|RR),
                       data = long_data %>% filter(grepl('QuestionQuality', question)) %>% filter((Order == 'RRFirst' & article_type == 'RR') | (Order == 'RRSecond' & article_type == 'nonRR')),
                       prior = priors,
@@ -170,4 +170,67 @@ WAIC(between_model)
 loo(between_model)
 
 
+# between-subjects model for batch 1
+between_model_keywords1 <- brm(response ~ Field + keyword_batch_comp + article_type + Match + article_type*Match +
+                                 (article_type|RR),
+                               data = long_data %>% 
+                                          filter(keyword_batch_comp == 1) %>%
+                                          filter(grepl('QuestionQuality', question)) %>% 
+                                          filter((Order == 'RRFirst' & article_type == 'RR') | (Order == 'RRSecond' & article_type == 'nonRR')),
+                               prior = priors,
+                               family = 'gaussian',
+                               chains = 4)
 
+summary(between_model_keywords1)
+pp_check(between_model_keywords1)
+WAIC(between_model_keywords1)
+loo(between_model_keywords1)
+
+# differenc score model for batched 2+3
+between_model_keywords2 <- brm(response ~ Field + keyword_batch_comp + article_type + Match + article_type*Match +
+                                 (article_type|RR),
+                               data = long_data %>% 
+                                 filter(keyword_batch_comp == 2) %>%
+                                 filter(grepl('QuestionQuality', question)) %>% 
+                                 filter((Order == 'RRFirst' & article_type == 'RR') | (Order == 'RRSecond' & article_type == 'nonRR')),
+                               prior = priors,
+                               family = 'gaussian',
+                               chains = 4)
+
+summary(between_model_keywords2)
+pp_check(between_model_keywords2)
+WAIC(between_model_keywords2)
+loo(between_model_keywords2)
+
+# graphical comparisons
+between_posteriors_keywords2 <- suppressMessages( 
+  mcmc_areas(posterior_samples(between_model_keywords2),
+             regex_pars = "b_",
+             prob=.9) +
+    xlim(-2, 2) +
+    labs(title = 'Batch 2')
+)
+
+between_posteriors_keywords1 <- suppressMessages( 
+  mcmc_areas(posterior_samples(between_model_keywords1),
+             regex_pars = "b_",
+             prob=.9) +
+    xlim(-2, 2) +
+    labs(title = 'Batch 1')
+)
+
+posteriors_pooled <- suppressMessages( 
+  mcmc_areas(posterior_samples(between_model),
+             regex_pars = "b_",
+             prob=.9) +
+    xlim(-2, 2) +
+    labs(title = 'Pooled Batched')
+)
+
+bind_rows(tidy(between_model) %>% mutate(model = 'between_model'),
+          tidy(between_model_keywords1) %>% mutate(model = 'batch1'),
+          tidy(wbetween_model_keywords2) %>% mutate(model = 'batch2')) %>%
+  filter(grepl('b_', term)) %>%
+  dotwhisker::dwplot() 
+
+between_posteriors_keywords1 / between_posteriors_keywords2
