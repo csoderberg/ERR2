@@ -9,10 +9,12 @@ library(tidybayes)
 long_data <- read_csv(here::here('cleaned_numeric_data_long.csv'), col_types = cols(article_type = col_factor(),
                                                                                     Field = col_factor(),
                                                                                     Match = col_factor(),
-                                                                                    Order = col_factor()))
+                                                                                    Order = col_factor(),
+                                                                                    keyword_batch_comp = col_factor()))
 wide_data <- read_csv(here::here('cleaned_numeric_data_wide.csv'), col_types = cols(Field = col_factor(),
                                                                                     Match = col_factor(),
-                                                                                    Order = col_factor()))
+                                                                                    Order = col_factor(),
+                                                                                    keyword_batch_comp = col_factor()))
 
 # set up contrasts codes
 contrasts(wide_data$Field) <- contr.sum(3)
