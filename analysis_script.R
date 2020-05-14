@@ -73,7 +73,8 @@ pp_check(within_model_diffs, type = "stat", stat = 'median', nsamples = 100)
 WAIC(within_model_diffs)
 loo(within_model_diffs)
 
-### within-subjects models
+
+### within-subjects models comparing pooled, batch 1, batch 2 + 3
 
 # difference score model, pooled across batches
 within_model_diffs <- brm(diff_question_quality ~ Field + keyword_batch_comp + Order + Match +
@@ -152,23 +153,6 @@ bind_rows(tidy(within_model_diffs) %>% mutate(model = 'within_diff_pooled'),
   dotwhisker::dwplot() 
 
 posteriors_keywords1 / posteriors_keywords2
-
-# no difference score model, pooled across batches
-within_model <- brm(response ~ Field + article_type + Order + Match +
-                                  article_type*Order + article_type*Match + Order*Match +
-                                  article_type*Order*Match + 
-                                          (1|participant_id) + (article_type|RR),
-                     data = long_data %>% filter(grepl('QuestionQuality', question)),
-                     prior = priors,
-                     family = 'gaussian',
-                     chains = 4)
-
-summary(within_model)
-plot(within_model)
-pp_check(within_model)
-pp_check(within_model, type = "stat", stat = 'median', nsamples = 100)
-WAIC(within_model)
-loo(within_model)
 
 
 ### between-subjects models
