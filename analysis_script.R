@@ -36,6 +36,43 @@ priors <- c(set_prior("normal(0,2)", "b"),
             set_prior("normal(0, 2.5)", "sd"))
 
 
+### Deciding between 2 possible within subjects model specifications:
+
+# no different score model
+within_model <- brm(response ~ Field + article_type + Order + Match +
+                      article_type*Order + article_type*Match + Order*Match +
+                      article_type*Order*Match + 
+                      (1|participant_id) + (article_type|RR),
+                    data = long_data %>% filter(grepl('QuestionQuality', question)),
+                    prior = priors,
+                    family = 'gaussian',
+                    chains = 4,
+                    seed = 1)
+
+summary(within_model)
+plot(within_model)
+pp_check(within_model)
+pp_check(within_model, type = "stat", stat = 'median', nsamples = 100)
+WAIC(within_model)
+loo(within_model)
+
+# difference score model
+within_model_diffs <- brm(diff_question_quality ~ Field + Order + Match +
+                            Order*Match +
+                            (1|RR),
+                          data = wide_data,
+                          prior = priors, 
+                          family = 'gaussian',
+                          chains = 4,
+                          seed = 2)
+
+summary(within_model_diffs)
+plot(within_model_diffs)
+pp_check(within_model_diffs)
+pp_check(within_model_diffs, type = "stat", stat = 'median', nsamples = 100)
+WAIC(within_model_diffs)
+loo(within_model_diffs)
+
 ### within-subjects models
 
 # difference score model, pooled across batches
@@ -136,7 +173,6 @@ loo(within_model)
 
 ### between-subjects models
 
-# pooled across batched
 between_model <- brm(response ~ Field + article_type + Match + article_type*Match +
                                             (article_type|RR),
                       data = long_data %>% filter(grepl('QuestionQuality', question)) %>% filter((Order == 'RRFirst' & article_type == 'RR') | (Order == 'RRSecond' & article_type == 'nonRR')),
