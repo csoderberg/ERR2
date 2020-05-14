@@ -4,6 +4,9 @@ library(tidyverse)
 library(ggplot2)
 library(bayesplot)
 library(tidybayes)
+library(patchwork)
+library(broom)
+library(dotwhisker)
 
 # load data
 long_data <- read_csv(here::here('cleaned_numeric_data_long.csv'), col_types = cols(article_type = col_factor(),
@@ -173,7 +176,7 @@ loo(between_model)
 
 
 # between-subjects model for batch 1
-between_model_keywords1 <- brm(response ~ Field + keyword_batch_comp + article_type + Match + article_type*Match +
+between_model_keywords1 <- brm(response ~ Field + article_type + Match + article_type*Match +
                                  (article_type|RR),
                                data = long_data %>% 
                                           filter(keyword_batch_comp == 1) %>%
@@ -189,7 +192,7 @@ WAIC(between_model_keywords1)
 loo(between_model_keywords1)
 
 # differenc score model for batched 2+3
-between_model_keywords2 <- brm(response ~ Field + keyword_batch_comp + article_type + Match + article_type*Match +
+between_model_keywords2 <- brm(response ~ Field + article_type + Match + article_type*Match +
                                  (article_type|RR),
                                data = long_data %>% 
                                  filter(keyword_batch_comp == 2) %>%
