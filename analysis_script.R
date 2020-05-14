@@ -234,7 +234,7 @@ posteriors_pooled <- suppressMessages(
 
 bind_rows(tidy(between_model) %>% mutate(model = 'between_model'),
           tidy(between_model_keywords1) %>% mutate(model = 'batch1'),
-          tidy(wbetween_model_keywords2) %>% mutate(model = 'batch2')) %>%
+          tidy(between_model_keywords2) %>% mutate(model = 'batch2')) %>%
   filter(grepl('b_', term)) %>%
   dotwhisker::dwplot() 
 
