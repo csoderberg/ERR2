@@ -19,6 +19,11 @@ contrasts(wide_data$Field) <- contr.sum(3)
 contrasts(wide_data$keyword_batch_comp) <- contr.sum(2)
 contrasts(wide_data$Order) <- contr.sum(2)
 contrasts(wide_data$Match) <- contr.sum(2)
+contrasts(long_data$article_type) <- contr.sum(2)
+contrasts(long_data$Field) <- contr.sum(3)
+contrasts(long_data$keyword_batch_comp) <- contr.sum(2)
+contrasts(long_data$Order) <- contr.sum(2)
+contrasts(long_data$Match) <- contr.sum(2)
 
 ## check distribution of question quality variable
 ggplot(long_data %>% filter(grepl('QuestionQuality', question)), aes(x = response)) +
@@ -29,6 +34,7 @@ ggplot(long_data %>% filter(grepl('QuestionQuality', question)), aes(x = respons
 # bayesian models for single DV
 priors <- c(set_prior("normal(0,2)", "b"),
             set_prior("normal(0, 2.5)", "sd"))
+
 
 ### within-subjects models
 
@@ -127,8 +133,10 @@ pp_check(within_model, type = "stat", stat = 'median', nsamples = 100)
 WAIC(within_model)
 loo(within_model)
 
+
 ### between-subjects models
 
+# pooled across batched
 between_model <- brm(response ~ Field + article_type + Match + article_type*Match +
                                             (article_type|RR),
                       data = long_data %>% filter(grepl('QuestionQuality', question)) %>% filter((Order == 'RRFirst' & article_type == 'RR') | (Order == 'RRSecond' & article_type == 'nonRR')),
@@ -140,7 +148,6 @@ summary(between_model)
 pp_check(between_model)
 WAIC(between_model)
 loo(between_model)
-
 
 
 
