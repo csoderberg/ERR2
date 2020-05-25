@@ -93,7 +93,8 @@ create_posteriors <- function(results, variable){
 # Set up which model/prior/dv combinations to run
 within_models <- crossing(dv = names(wide_data[,68:86]),
                     set_priors = c(list(priors))) %>%
-  mutate(within_pooled_model_results = pmap(list(dv, set_priors), within_pooled_model))
+  mutate(within_pooled_model_results = pmap(list(dv, set_priors), within_diff_pooled_model)) %>%
+  mutate(posteriors = pmap(list(model_results, variable = dv), create_posteriors))
 
 
 
