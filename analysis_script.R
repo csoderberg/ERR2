@@ -81,7 +81,14 @@ within_diff_keywords2_model <- function(dv, set_priors) {
   return(within_model_keywords2)
 }
 
-
+# function to create graph of posterior samples for intercept
+create_posteriors <- function(results, variable){
+  posteriors <- list(posterior_samples(results) %>%
+                       select('b_Intercept') %>%
+                       rename(setNames('b_Intercept', variable)))
+  
+  return(posteriors)
+}
 
 posteriors_keywords2 <- suppressMessages( 
   mcmc_areas(posterior_samples(within_model_diffs_keywords2),
