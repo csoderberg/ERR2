@@ -107,6 +107,8 @@ for (i in 1:nrow(within_models)) {
 mcmc_areas(intercepts,
            prob=.95)
 
+mcmc_intervals(intercepts, prob = .95)
+
 
 posteriors_keywords2 <- suppressMessages( 
   mcmc_areas(posterior_samples(within_model_diffs_keywords2),
