@@ -90,6 +90,13 @@ create_posteriors <- function(results, variable){
   return(posteriors)
 }
 
+# Set up which model/prior/dv combinations to run
+within_models <- crossing(dv = names(wide_data[,68:86]),
+                    set_priors = c(list(priors))) %>%
+  mutate(within_pooled_model_results = pmap(list(dv, set_priors), within_pooled_model))
+
+
+
 posteriors_keywords2 <- suppressMessages( 
   mcmc_areas(posterior_samples(within_model_diffs_keywords2),
              regex_pars = "b_",
