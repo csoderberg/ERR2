@@ -41,90 +41,46 @@ priors <- c(set_prior("normal(0,2)", "b"),
             set_prior("normal(0, 2.5)", "sd"))
 
 
-### Deciding between 2 possible within subjects model specifications:
-
-# no different score model
-within_model <- brm(response ~ Field + article_type + Order + Match +
-                      article_type*Order + article_type*Match + Order*Match +
-                      article_type*Order*Match + 
-                      (1|participant_id) + (article_type|RR),
-                    data = long_data %>% filter(grepl('QuestionQuality', question)),
-                    prior = priors,
-                    family = 'gaussian',
-                    chains = 4,
-                    seed = 1)
-
-summary(within_model)
-plot(within_model)
-pp_check(within_model)
-pp_check(within_model, type = "stat", stat = 'median', nsamples = 100)
-WAIC(within_model)
-loo(within_model)
-
-# difference score model
-within_model_diffs <- brm(diff_question_quality ~ Field + Order + Match +
-                            Order*Match +
-                            (1|RR),
-                          data = wide_data,
-                          prior = priors, 
-                          family = 'gaussian',
-                          chains = 4,
-                          seed = 2)
-
-summary(within_model_diffs)
-plot(within_model_diffs)
-pp_check(within_model_diffs)
-pp_check(within_model_diffs, type = "stat", stat = 'median', nsamples = 100)
-WAIC(within_model_diffs)
-loo(within_model_diffs)
 
 
-### within-subjects models comparing pooled, batch 1, batch 2 + 3
+### functions for within models
 
-# difference score model, pooled across batches
-within_model_diffs <- brm(diff_question_quality ~ Field + keyword_batch_comp + Order + Match +
+# set up function to run within difference pooled models on all dvs
+within_diff_pooled_model <- function(dv, set_priors) {
+  within_model_diffs <- brm(as.formula(paste(dv, "~ Field + keyword_batch_comp + Order + Match +
                                                     Order*Match +
-                                                    (1|RR),
-                           data = wide_data,
-                           prior = priors, 
-                           family = 'gaussian',
-                           chains = 4)
+                                                    (1|RR)")),
+                            data = wide_data,
+                            prior = set_priors, 
+                            family = 'gaussian',
+                            chains = 4)
+  return(within_model_diffs)
+}
 
-summary(within_model_diffs)
-plot(within_model)
-pp_check(within_model_diffs)
-pp_check(within_model_diffs, type = "stat", stat = 'median', nsamples = 100)
-WAIC(within_model_diffs)
-loo(within_model_diffs)
+# set up function to run within difference model on all dvs for those in first batch
+within_diff_keywords1_model <- function(dv, set_priors) {
+  within_model_keywords1 <- brm(as.formula(paste(dv, "~ Field + Order + Match +
+                                                    Order*Match +
+                                                    (1|RR)")),
+                            data = wide_data %>% filter(keyword_batch_comp == 1),
+                            prior = set_priors, 
+                            family = 'gaussian',
+                            chains = 4)
+  return(within_model_keywords1)
+}
 
+# set up function to run within difference model on all dvs for those in 2+3 batch
+within_diff_keywords2_model <- function(dv, set_priors) {
+  within_model_keywords2 <- brm(as.formula(paste(dv, "~ Field + Order + Match +
+                                                    Order*Match +
+                                                    (1|RR)")),
+                                data = wide_data %>% filter(keyword_batch_comp == 2),
+                                prior = set_priors, 
+                                family = 'gaussian',
+                                chains = 4)
+  return(within_model_keywords2)
+}
 
-# differenc score model for batch 1
-within_model_diffs_keywords1 <- brm(diff_question_quality ~ Field + Order + Match +
-                            Order*Match +
-                            (1|RR),
-                          data = wide_data %>% filter(keyword_batch_comp == 1),
-                          prior = priors, 
-                          family = 'gaussian',
-                          chains = 4)
-
-summary(within_model_diffs_keywords1)
-pp_check(within_model_diffs_keywords1)
-WAIC(within_model_diffs_keywords1)
-loo(within_model_diffs_keywords1)
-
-# differenc score model for batched 2+3
-within_model_diffs_keywords2 <- brm(diff_question_quality ~ Field + Order + Match +
-                                      Order*Match +
-                                      (1|RR),
-                                    data = wide_data %>% filter(keyword_batch_comp == 2),
-                                    prior = priors, 
-                                    family = 'gaussian',
-                                    chains = 4)
-
-summary(within_model_diffs_keywords2)
-pp_check(within_model_diffs_keywords2)
-WAIC(within_model_diffs_keywords2)
-loo(within_model_diffs_keywords2)
 
 
 posteriors_keywords2 <- suppressMessages( 
