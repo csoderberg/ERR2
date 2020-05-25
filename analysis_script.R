@@ -94,8 +94,18 @@ create_posteriors <- function(results, variable){
 within_models <- crossing(dv = names(wide_data[,68:86]),
                     set_priors = c(list(priors))) %>%
   mutate(within_pooled_model_results = pmap(list(dv, set_priors), within_diff_pooled_model)) %>%
-  mutate(posteriors = pmap(list(model_results, variable = dv), create_posteriors))
+  mutate(posteriors = pmap(list(within_pooled_model_results, variable = dv), create_posteriors))
 
+
+# get all intercepts into wide format for graphing
+intercepts <- c()
+
+for (i in 1:nrow(within_models)) {
+  intercepts <- bind_cols(intercepts, within_models$posteriors[[i]])
+}
+
+mcmc_areas(intercepts,
+           prob=.95)
 
 
 posteriors_keywords2 <- suppressMessages( 
