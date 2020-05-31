@@ -32,6 +32,11 @@ contrasts(long_data$keyword_batch_comp) <- contr.sum(2)
 contrasts(long_data$Order) <- contr.sum(2)
 contrasts(long_data$Match) <- contr.sum(2)
 
+# check means & SDs of each question by article type
+long_data %>%
+  group_by(question, article_type) %>%
+  summarize(mean = mean(response, na.rm = T), sd = sd(response, na.rm = T))
+
 ## check distribution of question quality variable
 ggplot(long_data %>% filter(grepl('QuestionQuality', question)), aes(x = response)) +
   geom_histogram(breaks=seq(-5, 4, by = 1), col = 'blue', fill = 'grey') +
