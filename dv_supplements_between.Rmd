@@ -127,37 +127,36 @@ posteriors_keywords1 / posteriors_keywords2
 ```
 
 
-## Within-Subjects Different Score Model (with covariate for batch)
+## Between Subjects Model (with covariate for batch)
 
 ```{r, warning = FALSE, message = FALSE, error = FALSE, results = 'hide'}
 
 # difference score model
-within_model_diffs <- brm(as.formula(paste(params$dep_var, "~ Field + keyword_batch_comp + Order + Match +
-                                                    Order*Match +
-                                                    (1|RR)")),
-                           data = wide_data,
-                           prior = priors, 
-                           family = 'gaussian',
-                           chains = 4,
-                           seed = 5)
+between_model <- brm(response ~ Field + keyword_batch_comp + article_type + Match + article_type*Match +
+                         (article_type|RR),
+                       data = long_data %>% filter(grepl(as.character(dv), question)) %>% filter((Order == 'RRFirst' & article_type == 'RR') | (Order == 'RRSecond' & article_type == 'nonRR')),
+                       prior = priors,
+                       family = 'gaussian',
+                       chains = 4,
+                       seed = 17)
 ```
 
 ```{r warning = FALSE, message = FALSE,error = FALSE}
-summary(within_model_diffs)
-pp_check(within_model_diffs)
-pp_check(within_model_diffs, type = "stat", stat = 'median')
-WAIC(within_model_diffs)
-loo(within_model_diffs)
+summary(between_model)
+pp_check(between_model)
+pp_check(between_model, type = "stat", stat = 'median')
+WAIC(between_model)
+loo(between_model)
 ```
 
 ## graph comparing estimates and 95% intervals for all 3 models
 ```{r}
-bind_rows(tidy(within_model_diffs) %>% mutate(model = 'within_diff_pooled'),
-          tidy(within_model_diffs_keywords1) %>% mutate(model = 'batch1'),
-          tidy(within_model_diffs_keywords2) %>% mutate(model = 'batch2')) %>%
+bind_rows(tidy(between_model) %>% mutate(model = 'between_pooled'),
+          tidy(between_keywords1) %>% mutate(model = 'batch1'),
+          tidy(between_keywords2) %>% mutate(model = 'batch2')) %>%
   filter(grepl('b_', term)) %>%
   dotwhisker::dwplot() +
-  ggtitle(stringr::str_glue('All within models for {params$dep_var}'))
+  ggtitle(stringr::str_glue('All between models for {params$dep_var}'))
 ```
 
 
