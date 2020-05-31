@@ -110,37 +110,6 @@ mcmc_areas(intercepts,
 mcmc_intervals(intercepts, prob = .95)
 
 
-posteriors_keywords2 <- suppressMessages( 
-  mcmc_areas(posterior_samples(within_model_diffs_keywords2),
-             regex_pars = "b_",
-             prob=.9) +
-             xlim(-2, 2) +
-             labs(title = 'Batch 2')
-)
-
-posteriors_keywords1 <- suppressMessages( 
-  mcmc_areas(posterior_samples(within_model_diffs_keywords1),
-             regex_pars = "b_",
-             prob=.9) +
-             xlim(-2, 2) +
-             labs(title = 'Batch 1')
-)
-
-posteriors_pooled <- suppressMessages( 
-  mcmc_areas(posterior_samples(within_model_diffs),
-             regex_pars = "b_",
-             prob=.9) +
-             xlim(-2, 2) +
-             labs(title = 'Pooled Batched')
-)
-
-bind_rows(tidy(within_model_diffs) %>% mutate(model = 'within_diff_pooled'),
-          tidy(within_model_diffs_keywords1) %>% mutate(model = 'batch1'),
-          tidy(within_model_diffs_keywords2) %>% mutate(model = 'batch2')) %>%
-  filter(grepl('b_', term)) %>%
-  dotwhisker::dwplot() 
-
-posteriors_keywords1 / posteriors_keywords2
 
 
 ### between-subjects models comparing pooled, batch 1, batch 2 + 3
