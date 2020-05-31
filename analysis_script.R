@@ -37,11 +37,6 @@ long_data %>%
   group_by(question, article_type) %>%
   summarize(mean = mean(response, na.rm = T), sd = sd(response, na.rm = T))
 
-## check distribution of question quality variable
-ggplot(long_data %>% filter(grepl('QuestionQuality', question)), aes(x = response)) +
-  geom_histogram(breaks=seq(-5, 4, by = 1), col = 'blue', fill = 'grey') +
-  scale_x_continuous(breaks=seq(-5, 4, by = 1))
-
 
 # bayesian models for single DV
 priors <- c(set_prior("normal(0,2)", "b"),
