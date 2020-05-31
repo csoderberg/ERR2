@@ -152,6 +152,14 @@ between_keywords2_model <- function(dv, set_priors) {
                                  chains = 4)
 }
 
+# Set up which model/prior/dv combinations to run for between models
+between_models <- crossing(dv = c(long_data %>% select(question) %>% distinct(question)),
+                          set_priors = c(list(priors))) %>%
+  mutate(between_pooled_model_results = pmap(list(dv, set_priors), within_diff_pooled_model)) %>%
+  mutate(posteriors = pmap(list(between_pooled_model_results, variable = dv), create_posteriors))
+
+
+
 # graphical comparisons
 between_posteriors_keywords2 <- suppressMessages( 
   mcmc_areas(posterior_samples(between_model_keywords2),
