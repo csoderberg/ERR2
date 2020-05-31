@@ -58,26 +58,29 @@ priors <- c(set_prior("normal(0,2)", "b"),
 ```
 
 
-## Within-Subjects Difference Score Models by 'keyword batch'
+## Between-Subjects Score Models by 'keyword batch'
 
 ### First Batch
 ```{r warning = FALSE, message = FALSE, error = FALSE, results = 'hide'}
-# differenc score model for batch 1
-within_model_diffs_keywords1 <- brm(as.formula(paste(params$dep_var, "~ Field + Order + Match +
-                                                    Order*Match +
-                                                    (1|RR)")),
-                          data = wide_data %>% filter(keyword_batch_comp == 1),
-                          prior = priors, 
-                          family = 'gaussian',
-                          chains = 4,
-                          seed = 3)
+
+# between subjects model for batch 1
+between_keywords1 <- brm(response ~ Field + article_type + Match + article_type*Match +
+                                   (article_type|RR),
+                                 data = long_data %>% 
+                                   filter(keyword_batch_comp == 1) %>%
+                                   filter(grepl(as.character(dv), question)) %>% 
+                                   filter((Order == 'RRFirst' & article_type == 'RR') | (Order == 'RRSecond' & article_type == 'nonRR')),
+                                 prior = priors,
+                                 family = 'gaussian',
+                                 chains = 4,
+                                 set.seed = 15)
 ```
 
 ```{r warning = FALSE, message = FALSE,error = FALSE}
-summary(within_model_diffs_keywords1)
-pp_check(within_model_diffs_keywords1)
-WAIC(within_model_diffs_keywords1)
-loo(within_model_diffs_keywords1)
+summary(between_keywords1)
+pp_check(between_keywords1)
+WAIC(between_keywords1)
+loo(between_keywords1)
 ```
 
 ### Batches 2 + 3
