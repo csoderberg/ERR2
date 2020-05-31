@@ -73,7 +73,7 @@ between_keywords1 <- brm(response ~ Field + article_type + Match + article_type*
                                  prior = priors,
                                  family = 'gaussian',
                                  chains = 4,
-                                 set.seed = 15)
+                                 seed = 15)
 ```
 
 ```{r warning = FALSE, message = FALSE,error = FALSE}
@@ -86,21 +86,23 @@ loo(between_keywords1)
 ### Batches 2 + 3
 
 ``` {r warning = FALSE, message = FALSE, error = FALSE, results = 'hide'}
-within_model_diffs_keywords2 <- brm(as.formula(paste(params$dep_var, "~ Field + Order + Match +
-                                                    Order*Match +
-                                                    (1|RR)")),
-                                    data = wide_data %>% filter(keyword_batch_comp == 2),
-                                    prior = priors, 
-                                    family = 'gaussian',
-                                    chains = 4,
-                                    seed = 4)
+between_keywords2 <- brm(response ~ Field + article_type + Match + article_type*Match +
+                                   (article_type|RR),
+                                 data = long_data %>% 
+                                   filter(keyword_batch_comp == 2) %>%
+                                   filter(grepl(as.character(dv), question)) %>% 
+                                   filter((Order == 'RRFirst' & article_type == 'RR') | (Order == 'RRSecond' & article_type == 'nonRR')),
+                                 prior = priors,
+                                 family = 'gaussian',
+                                 chains = 4,
+                                 seed = 16)
 ```
 
 ```{r warning = FALSE, message = FALSE,error = FALSE}
-summary(within_model_diffs_keywords2)
-pp_check(within_model_diffs_keywords2)
-WAIC(within_model_diffs_keywords2)
-loo(within_model_diffs_keywords2)
+summary(between_keywords2)
+pp_check(between_keywords2)
+WAIC(between_keywords2)
+loo(between_keywords2)
 ```
 
 ### graphs of posterior samples
