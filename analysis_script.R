@@ -154,11 +154,20 @@ between_keywords2_model <- function(dv, set_priors) {
                                  chains = 4)
 }
 
+# function to create graph of posterior samples for intercept
+create_posteriors_btw <- function(results, variable){
+  posteriors <- list(posterior_samples(results) %>%
+                       select('b_article_type1') %>%
+                       rename(setNames('b_article_type', variable)))
+  
+  return(posteriors)
+}
+
 # Set up which model/prior/dv combinations to run for between models
 between_models <- crossing(dv = long_data %>% select(question) %>% distinct(question),
                           set_priors = c(list(priors))) %>%
   mutate(between_pooled_model_results = pmap(list(dv, set_priors), between_pooled_model)) %>%
-  mutate(posteriors = pmap(list(between_pooled_model_results, variable = dv), create_posteriors))
+  mutate(posteriors = pmap(list(between_pooled_model_results, variable = dv), create_posteriors_btw))
 
 
 
