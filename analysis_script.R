@@ -13,7 +13,9 @@ long_data <- read_csv(here::here('cleaned_numeric_data_long.csv'), col_types = c
                                                                                     Field = col_factor(),
                                                                                     Match = col_factor(),
                                                                                     Order = col_factor(),
-                                                                                    keyword_batch_comp = col_factor()))
+                                                                                    keyword_batch_comp = col_factor())) %>%
+             mutate(question = case_when(article_type == 'RR' ~ str_sub(question, 3),
+                                         article_type == 'nonRR' ~ str_sub(question, 4)))
 wide_data <- read_csv(here::here('cleaned_numeric_data_wide.csv'), col_types = cols(Field = col_factor(),
                                                                                     Match = col_factor(),
                                                                                     Order = col_factor(),
