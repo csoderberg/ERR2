@@ -136,7 +136,7 @@ posteriors_keywords1 / posteriors_keywords2
 # difference score model
 between_model <- brm(response ~ Field + keyword_batch_comp + article_type + Match + article_type*Match +
                          (article_type|RR),
-                       data = long_data %>% filter(grepl(as.character(dv), question)) %>% filter((Order == 'RRFirst' & article_type == 'RR') | (Order == 'RRSecond' & article_type == 'nonRR')),
+                       data = long_data %>% filter(grepl(as.character(params$btw_dep_var), question)) %>% filter((Order == 'RRFirst' & article_type == 'RR') | (Order == 'RRSecond' & article_type == 'nonRR')),
                        prior = priors,
                        family = 'gaussian',
                        chains = 4,
