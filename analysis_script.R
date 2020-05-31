@@ -155,9 +155,9 @@ between_keywords2_model <- function(dv, set_priors) {
 }
 
 # Set up which model/prior/dv combinations to run for between models
-between_models <- crossing(dv = c(long_data %>% select(question) %>% distinct(question)),
+between_models <- crossing(dv = long_data %>% select(question) %>% distinct(question),
                           set_priors = c(list(priors))) %>%
-  mutate(between_pooled_model_results = pmap(list(dv, set_priors), within_diff_pooled_model)) %>%
+  mutate(between_pooled_model_results = pmap(list(dv, set_priors), between_pooled_model)) %>%
   mutate(posteriors = pmap(list(between_pooled_model_results, variable = dv), create_posteriors))
 
 
