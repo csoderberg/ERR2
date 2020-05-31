@@ -25,12 +25,12 @@ long_data <- read_csv(here::here('cleaned_numeric_data_long.csv'), col_types = c
   mutate(question = case_when(article_type == 'RR' ~ str_sub(question, 3),
                               article_type == 'nonRR' ~ str_sub(question, 4)))
 
-btw_dep_var <- long_data %>% select(question) %>% distinct(question)
+btw_dep_var <- long_data %>% select(question) %>% distinct(question) %>% pull(question)
 
 btw_supplements <- tibble(
-  output_file = stringr::str_c(btw_var, "btwsubj_supplement.html"),
+  output_file = stringr::str_c(btw_dep_var, "btwsubj_supplement.html"),
   params = map(btw_dep_var, ~list(btw_dep_var = .))
 )
 
-supplements %>%
+btw_supplements %>%
   pwalk(rmarkdown::render, 'dv_supplements_between.Rmd')
