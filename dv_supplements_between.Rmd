@@ -2,7 +2,7 @@
 title: "Iterative Supplements by DV"
 output: html_document
 params:
-  dep_var: "diff_field_importance"
+  dep_var: "QuestionQuality"
 ---
 
 ```{r setup, warning = FALSE, message = FALSE, error = FALSE}
@@ -68,7 +68,7 @@ between_keywords1 <- brm(response ~ Field + article_type + Match + article_type*
                                    (article_type|RR),
                                  data = long_data %>% 
                                    filter(keyword_batch_comp == 1) %>%
-                                   filter(grepl(as.character(dv), question)) %>% 
+                                   filter(grepl(as.character(params$dep_var), question)) %>% 
                                    filter((Order == 'RRFirst' & article_type == 'RR') | (Order == 'RRSecond' & article_type == 'nonRR')),
                                  prior = priors,
                                  family = 'gaussian',
@@ -90,7 +90,7 @@ between_keywords2 <- brm(response ~ Field + article_type + Match + article_type*
                                    (article_type|RR),
                                  data = long_data %>% 
                                    filter(keyword_batch_comp == 2) %>%
-                                   filter(grepl(as.character(dv), question)) %>% 
+                                   filter(grepl(as.character(params$dep_var), question)) %>% 
                                    filter((Order == 'RRFirst' & article_type == 'RR') | (Order == 'RRSecond' & article_type == 'nonRR')),
                                  prior = priors,
                                  family = 'gaussian',
@@ -108,7 +108,7 @@ loo(between_keywords2)
 ### graphs of posterior samples
 ```{r warning = FALSE, message = FALSE,error = FALSE}
 posteriors_keywords2 <- suppressMessages( 
-  mcmc_areas(posterior_samples(within_model_diffs_keywords2),
+  mcmc_areas(posterior_samples(between_keywords2),
              regex_pars = "b_",
              prob=.9) +
              xlim(-2, 2) +
@@ -116,7 +116,7 @@ posteriors_keywords2 <- suppressMessages(
 )
 
 posteriors_keywords1 <- suppressMessages( 
-  mcmc_areas(posterior_samples(within_model_diffs_keywords1),
+  mcmc_areas(posterior_samples(between_keywords1),
              regex_pars = "b_",
              prob=.9) +
              xlim(-2, 2) +
