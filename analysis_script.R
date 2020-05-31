@@ -111,53 +111,46 @@ mcmc_intervals(intercepts, prob = .95)
 
 
 
+### functions for between subjects models
 
-### between-subjects models comparing pooled, batch 1, batch 2 + 3
-
-between_model <- brm(response ~ Field + keyword_batch_comp + article_type + Match + article_type*Match +
-                                            (article_type|RR),
-                      data = long_data %>% filter(grepl('QuestionQuality', question)) %>% filter((Order == 'RRFirst' & article_type == 'RR') | (Order == 'RRSecond' & article_type == 'nonRR')),
-                      prior = priors,
-                      family = 'gaussian',
-                      chains = 4)
-
-summary(between_model)
-pp_check(between_model)
-WAIC(between_model)
-loo(between_model)
+# between-subjects models comparing pooled, batch 1, batch 2 + 3
+between_pooled_model <- function(dv, set_priors) {
+  between_model <- brm(response ~ Field + keyword_batch_comp + article_type + Match + article_type*Match +
+                         (article_type|RR),
+                       data = long_data %>% filter(grepl(as.string(dv), question)) %>% filter((Order == 'RRFirst' & article_type == 'RR') | (Order == 'RRSecond' & article_type == 'nonRR')),
+                       prior = priors,
+                       family = 'gaussian',
+                       chains = 4)
+  return(between_model)
+  }
 
 
 # between-subjects model for batch 1
-between_model_keywords1 <- brm(response ~ Field + article_type + Match + article_type*Match +
-                                 (article_type|RR),
-                               data = long_data %>% 
-                                          filter(keyword_batch_comp == 1) %>%
-                                          filter(grepl('QuestionQuality', question)) %>% 
-                                          filter((Order == 'RRFirst' & article_type == 'RR') | (Order == 'RRSecond' & article_type == 'nonRR')),
-                               prior = priors,
-                               family = 'gaussian',
-                               chains = 4)
-
-summary(between_model_keywords1)
-pp_check(between_model_keywords1)
-WAIC(between_model_keywords1)
-loo(between_model_keywords1)
+between_keywords1_model <- function(dv, set_priors) {
+  between_keywords1 <- brm(response ~ Field + article_type + Match + article_type*Match +
+                                   (article_type|RR),
+                                 data = long_data %>% 
+                                   filter(keyword_batch_comp == 1) %>%
+                                   filter(grepl(as.string(dv), question)) %>% 
+                                   filter((Order == 'RRFirst' & article_type == 'RR') | (Order == 'RRSecond' & article_type == 'nonRR')),
+                                 prior = priors,
+                                 family = 'gaussian',
+                                 chains = 4)
+  return(between_keywords1)
+}
 
 # differenc score model for batched 2+3
-between_model_keywords2 <- brm(response ~ Field + article_type + Match + article_type*Match +
-                                 (article_type|RR),
-                               data = long_data %>% 
-                                 filter(keyword_batch_comp == 2) %>%
-                                 filter(grepl('QuestionQuality', question)) %>% 
-                                 filter((Order == 'RRFirst' & article_type == 'RR') | (Order == 'RRSecond' & article_type == 'nonRR')),
-                               prior = priors,
-                               family = 'gaussian',
-                               chains = 4)
-
-summary(between_model_keywords2)
-pp_check(between_model_keywords2)
-WAIC(between_model_keywords2)
-loo(between_model_keywords2)
+between_keywords2_model <- function(dv, set_priors) {
+  between_keywords2 <- brm(response ~ Field + article_type + Match + article_type*Match +
+                                   (article_type|RR),
+                                 data = long_data %>% 
+                                   filter(keyword_batch_comp == 2) %>%
+                                   filter(grepl(as.string(dv), question)) %>% 
+                                   filter((Order == 'RRFirst' & article_type == 'RR') | (Order == 'RRSecond' & article_type == 'nonRR')),
+                                 prior = priors,
+                                 family = 'gaussian',
+                                 chains = 4)
+}
 
 # graphical comparisons
 between_posteriors_keywords2 <- suppressMessages( 
