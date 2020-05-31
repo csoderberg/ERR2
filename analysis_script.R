@@ -162,6 +162,19 @@ between_models <- crossing(dv = long_data %>% select(question) %>% distinct(ques
 
 
 
+#graphs for between models
+# get all intercepts into wide format for graphing
+intercepts <- c()
+
+for (i in 1:nrow(between_models)) {
+  intercepts <- bind_cols(intercepts, between_models$posteriors[[i]])
+}
+
+mcmc_areas(intercepts,
+           prob=.95)
+
+mcmc_intervals(intercepts, prob = .95)
+
 # graphical comparisons
 between_posteriors_keywords2 <- suppressMessages( 
   mcmc_areas(posterior_samples(between_model_keywords2),
