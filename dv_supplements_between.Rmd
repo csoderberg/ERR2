@@ -2,7 +2,7 @@
 title: "Iterative Supplements by DV"
 output: html_document
 params:
-  dep_var: "QuestionQuality"
+  btw_dep_var: "QuestionQuality"
 ---
 
 ```{r setup, warning = FALSE, message = FALSE, error = FALSE}
@@ -21,7 +21,9 @@ long_data <- read_csv(here::here('cleaned_numeric_data_long.csv'), col_types = c
                                                                                     Field = col_factor(),
                                                                                     Match = col_factor(),
                                                                                     Order = col_factor(),
-                                                                                    keyword_batch_comp = col_factor()))
+                                                                                    keyword_batch_comp = col_factor())) %>%
+             mutate(question = case_when(article_type == 'RR' ~ str_sub(question, 3),
+                                         article_type == 'nonRR' ~ str_sub(question, 4)))
 wide_data <- read_csv(here::here('cleaned_numeric_data_wide.csv'), col_types = cols(Field = col_factor(),
                                                                                     Match = col_factor(),
                                                                                     Order = col_factor(),
@@ -43,11 +45,11 @@ contrasts(long_data$Match) <- contr.sum(2)
 The bars are to the left of the number they go with (e.g. the tallest bar, which is to the left of the 0 tick mark, is the count for 0 response). Difference scores are calculated as the rating for the Registered Reports article minus the Matched article. 
 
 ```{r warning = FALSE, error = FALSE, message = FALSE}
-ggplot(long_data %>% filter(question == params$dep_var) %>% filter((Order == 'RRFirst' & article_type == 'RR') | (Order == 'RRSecond' & article_type == 'nonRR')), 
+ggplot(long_data %>% filter(question == params$btw_dep_var) %>% filter((Order == 'RRFirst' & article_type == 'RR') | (Order == 'RRSecond' & article_type == 'nonRR')), 
         aes_string(x = response)) +
   geom_histogram(breaks=seq(-8, 8, by = 1), col = 'blue', fill = 'grey') +
   scale_x_continuous(breaks=seq(-8, 8, by = 1)) +
-  labs(title = stringr::str_glue("Distribution of scores for first article on question: {params$dep_var}"))
+  labs(title = stringr::str_glue("Distribution of scores for first article on question: {params$btw_dep_var}"))
 ```
 
 # Deciding between pooled vs. seperate models by recruitment batch:
@@ -68,7 +70,7 @@ between_keywords1 <- brm(response ~ Field + article_type + Match + article_type*
                                    (article_type|RR),
                                  data = long_data %>% 
                                    filter(keyword_batch_comp == 1) %>%
-                                   filter(grepl(as.character(params$dep_var), question)) %>% 
+                                   filter(grepl(as.character(params$btw_dep_var), question)) %>% 
                                    filter((Order == 'RRFirst' & article_type == 'RR') | (Order == 'RRSecond' & article_type == 'nonRR')),
                                  prior = priors,
                                  family = 'gaussian',
@@ -90,7 +92,7 @@ between_keywords2 <- brm(response ~ Field + article_type + Match + article_type*
                                    (article_type|RR),
                                  data = long_data %>% 
                                    filter(keyword_batch_comp == 2) %>%
-                                   filter(grepl(as.character(params$dep_var), question)) %>% 
+                                   filter(grepl(as.character(params$btw_dep_var), question)) %>% 
                                    filter((Order == 'RRFirst' & article_type == 'RR') | (Order == 'RRSecond' & article_type == 'nonRR')),
                                  prior = priors,
                                  family = 'gaussian',
@@ -112,7 +114,7 @@ posteriors_keywords2 <- suppressMessages(
              regex_pars = "b_",
              prob=.9) +
              xlim(-2, 2) +
-             labs(title = stringr::str_glue('Batch 2 of {params$dep_var}'))
+             labs(title = stringr::str_glue('Batch 2 of {params$btw_dep_var}'))
 )
 
 posteriors_keywords1 <- suppressMessages( 
@@ -120,7 +122,7 @@ posteriors_keywords1 <- suppressMessages(
              regex_pars = "b_",
              prob=.9) +
              xlim(-2, 2) +
-             labs(title = stringr::str_glue('Batch 1 of {params$dep_var}'))
+             labs(title = stringr::str_glue('Batch 1 of {params$btw_dep_var}'))
 )
 
 posteriors_keywords1 / posteriors_keywords2
@@ -156,7 +158,7 @@ bind_rows(tidy(between_model) %>% mutate(model = 'between_pooled'),
           tidy(between_keywords2) %>% mutate(model = 'batch2')) %>%
   filter(grepl('b_', term)) %>%
   dotwhisker::dwplot() +
-  ggtitle(stringr::str_glue('All between models for {params$dep_var}'))
+  ggtitle(stringr::str_glue('All between models for {params$btw_dep_var}'))
 ```
 
 
