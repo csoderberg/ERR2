@@ -119,7 +119,7 @@ mcmc_intervals(intercepts, prob = .95)
 between_pooled_model <- function(dv, set_priors) {
   between_model <- brm(response ~ Field + keyword_batch_comp + article_type + Match + article_type*Match +
                          (article_type|RR),
-                       data = long_data %>% filter(grepl(as.string(dv), question)) %>% filter((Order == 'RRFirst' & article_type == 'RR') | (Order == 'RRSecond' & article_type == 'nonRR')),
+                       data = long_data %>% filter(grepl(as.character(dv), question)) %>% filter((Order == 'RRFirst' & article_type == 'RR') | (Order == 'RRSecond' & article_type == 'nonRR')),
                        prior = priors,
                        family = 'gaussian',
                        chains = 4)
@@ -133,7 +133,7 @@ between_keywords1_model <- function(dv, set_priors) {
                                    (article_type|RR),
                                  data = long_data %>% 
                                    filter(keyword_batch_comp == 1) %>%
-                                   filter(grepl(as.string(dv), question)) %>% 
+                                   filter(grepl(as.character(dv), question)) %>% 
                                    filter((Order == 'RRFirst' & article_type == 'RR') | (Order == 'RRSecond' & article_type == 'nonRR')),
                                  prior = priors,
                                  family = 'gaussian',
@@ -147,7 +147,7 @@ between_keywords2_model <- function(dv, set_priors) {
                                    (article_type|RR),
                                  data = long_data %>% 
                                    filter(keyword_batch_comp == 2) %>%
-                                   filter(grepl(as.string(dv), question)) %>% 
+                                   filter(grepl(as.character(dv), question)) %>% 
                                    filter((Order == 'RRFirst' & article_type == 'RR') | (Order == 'RRSecond' & article_type == 'nonRR')),
                                  prior = priors,
                                  family = 'gaussian',
