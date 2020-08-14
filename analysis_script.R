@@ -368,8 +368,9 @@ for_descriptive %>%
 
 #### Exploratory Analyses ####
 
+### between subjects models 
+
 ## add covariates for 'Qualified to review', behavior_familiar (item average score of Pre-reg adn RR familiarity items), believe_improve (item average score of BelieveRigor and BelieveQuality items)
-  
 between_pooled_model_covariates <- function(dv, set_priors) {
   between_model <- brm(response ~ Field + keyword_batch_comp + FirstQualified + behavior_familiar + believe_improve
                                       + article_type + Match + article_type*Match +
@@ -380,6 +381,26 @@ between_pooled_model_covariates <- function(dv, set_priors) {
                        chains = 4)
   return(between_model)
 }
+
+
+between_models_covariates <- crossing(dv = long_data %>% select(question) %>% distinct(question) %>% pull(question),
+                           set_priors = c(list(priors))) %>%
+  mutate(between_pooled_covariates_results = pmap(list(dv, set_priors), between_pooled_model_covariates)) %>%
+  mutate(posteriors = pmap(list(between_pooled_covariates_results, variable = dv), create_posteriors_btw))
+
+intercepts <- c()
+
+for (i in 1:nrow(between_models_covariates)) {
+  intercepts <- bind_cols(intercepts, between_models_covariates$posteriors[[i]])
+}
+
+mcmc_areas(intercepts,
+           prob=.95)
+
+mcmc_intervals(intercepts, prob = .95)
+
+## split data and look at results (with covariates) for those who guess right and didn't guess right
+
   
   
   
