@@ -420,7 +420,7 @@ between_pooled_model_covariates_wrong <- function(dv, set_priors) {
   between_model <- brm(response ~ Field + keyword_batch_comp + FirstQualified + behavior_familiar + believe_improve
                        + article_type + Match + article_type*Match +
                          (article_type|RR),
-                       data = long_data %>% filter(grepl(as.character(dv), question)) %>% filter((Order == 'RRFirst' & article_type == 'RR') | (Order == 'RRSecond' & article_type == 'nonRR')) %>% filter(guessed_righ_firstt == 0),
+                       data = long_data %>% filter(grepl(as.character(dv), question)) %>% filter((Order == 'RRFirst' & article_type == 'RR') | (Order == 'RRSecond' & article_type == 'nonRR')) %>% filter(guessed_right_first == 0),
                        prior = priors,
                        family = 'gaussian',
                        chains = 4)
