@@ -8,6 +8,7 @@ library(patchwork)
 library(broom)
 library(dotwhisker)
 library(skimr)
+library(broom.mixed)
 
 # load data
 long_data <- read_csv(here::here('cleaned_numeric_data_long.csv'), col_types = cols(article_type = col_factor(),
@@ -400,7 +401,62 @@ mcmc_areas(intercepts,
 mcmc_intervals(intercepts, prob = .95)
 
 ## split data and look at results (with covariates) for those who guess right and didn't guess right
+between_pooled_model_covariates_right <- function(dv, set_priors) {
+  between_model <- brm(response ~ Field + keyword_batch_comp + FirstQualified + behavior_familiar + believe_improve
+                       + article_type + Match + article_type*Match +
+                         (article_type|RR),
+                       data = long_data %>% filter(grepl(as.character(dv), question)) %>% filter((Order == 'RRFirst' & article_type == 'RR') | (Order == 'RRSecond' & article_type == 'nonRR')) %>% filter(guessed_right == 1),
+                       prior = priors,
+                       family = 'gaussian',
+                       chains = 4)
+  return(between_model)
+}
 
+between_pooled_model_covariates_wrong <- function(dv, set_priors) {
+  between_model <- brm(response ~ Field + keyword_batch_comp + FirstQualified + behavior_familiar + believe_improve
+                       + article_type + Match + article_type*Match +
+                         (article_type|RR),
+                       data = long_data %>% filter(grepl(as.character(dv), question)) %>% filter((Order == 'RRFirst' & article_type == 'RR') | (Order == 'RRSecond' & article_type == 'nonRR')) %>% filter(guessed_right == 0),
+                       prior = priors,
+                       family = 'gaussian',
+                       chains = 4)
+  return(between_model)
+}
+
+# run both models for all DVs
+between_models_covariates_right <- crossing(dv = long_data %>% select(question) %>% distinct(question) %>% pull(question),
+                                      set_priors = c(list(priors))) %>%
+  mutate(between_pooled_covariates_right_results = pmap(list(dv, set_priors), between_pooled_model_covariates_right)) %>%
+  mutate(posteriors = pmap(list(between_pooled_covariates_right_results, variable = dv), create_posteriors_btw))
+
+between_models_covariates_wrong <- crossing(dv = long_data %>% select(question) %>% distinct(question) %>% pull(question),
+                                      set_priors = c(list(priors))) %>%
+  mutate(between_pooled_covariates_wrong_results = pmap(list(dv, set_priors), between_pooled_model_covariates_wrong)) %>%
+  mutate(posteriors = pmap(list(between_pooled_covariates_wrong_results, variable = dv), create_posteriors_btw))
+
+## function to keep only article_type coefficient for graphing
+extract_coef <- function(fitted_model){
+  tidied_result <- tidy(fitted_model) %>%
+    filter(grepl('^article_type2$', term) & effect == 'fixed')
   
-  
-  
+  return(tidied_result)
+}
+
+## create graph showing intervals side by side
+bind_rows(between_models_covariates_right %>%
+  mutate(tidied = pmap(list(between_pooled_covariates_right_results), extract_coef)) %>%
+  select(dv, tidied) %>%
+  mutate(model = 'Yes') %>%
+  unnest_wider(tidied) %>%
+  rbind() %>%
+  rename(coef = term,
+         term = dv),
+between_models_covariates_wrong %>%
+  mutate(tidied = pmap(list(between_pooled_covariates_wrong_results), extract_coef)) %>%
+  select(dv, tidied) %>%
+  mutate(model = 'No') %>%
+  unnest_wider(tidied) %>%
+  rbind() %>%
+  rename(coef = term,
+         term = dv)) %>%
+  dotwhisker::dwplot()
