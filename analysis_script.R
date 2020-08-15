@@ -19,10 +19,14 @@ long_data <- read_csv(here::here('cleaned_numeric_data_long.csv'), col_types = c
              mutate(question = case_when(article_type == 'RR' ~ str_sub(question, 3),
                                          article_type == 'nonRR' ~ str_sub(question, 4))) %>%
             mutate(article_type = fct_relevel(article_type, c('nonRR', 'RR'))) %>%
-            mutate(guessed_right = case_when(Order == 'RRFirst' & BelieveFirstRR == 1 ~ 1,
+            mutate(guessed_right_first = case_when(Order == 'RRFirst' & BelieveFirstRR == 1 ~ 1,
                                              Order == 'RRFirst' & (BelieveFirstRR == 2 | BelieveFirstRR == 3) ~ 0,
-                                             Order == 'RRSecond' & BelieveFirstRR == 1 ~ 0,
-                                             Order == 'RRSecond' & (BelieveFirstRR == 2 | BelieveFirstRR == 3) ~ 1)) %>%
+                                             Order == 'RRSecond' & BelieveFirstRR == 1 | BelieveFirstRR == 2 ~ 0,
+                                             Order == 'RRSecond' & (BelieveFirstRR == 3) ~ 1),
+                   guessed_right_second = case_when(Order == 'RRSecond' & BelieveSecondRR == 1 ~ 1,
+                                                   Order == 'RRSecond' & (BelieveSecondRR == 2 | BelieveSecondRR == 3) ~ 0,
+                                                   Order == 'RRFirst' & BelieveSecondRR == 1 | BelieveSecondRR == 2 ~ 0,
+                                                   Order == 'RRFirst' & (BelieveSecondRR == 3) ~ 1)) %>%
             mutate(behavior_familiar = rowMeans(across(c(RRFamiliar,PreregFamiliar)), na.rm = T),
                    believe_improve = rowMeans(across(c(BelieveRigor,BelieveQuality)), na.rm = T))
 
@@ -405,7 +409,7 @@ between_pooled_model_covariates_right <- function(dv, set_priors) {
   between_model <- brm(response ~ Field + keyword_batch_comp + FirstQualified + behavior_familiar + believe_improve
                        + article_type + Match + article_type*Match +
                          (article_type|RR),
-                       data = long_data %>% filter(grepl(as.character(dv), question)) %>% filter((Order == 'RRFirst' & article_type == 'RR') | (Order == 'RRSecond' & article_type == 'nonRR')) %>% filter(guessed_right == 1),
+                       data = long_data %>% filter(grepl(as.character(dv), question)) %>% filter((Order == 'RRFirst' & article_type == 'RR') | (Order == 'RRSecond' & article_type == 'nonRR')) %>% filter(guessed_right_first == 1),
                        prior = priors,
                        family = 'gaussian',
                        chains = 4)
@@ -416,7 +420,7 @@ between_pooled_model_covariates_wrong <- function(dv, set_priors) {
   between_model <- brm(response ~ Field + keyword_batch_comp + FirstQualified + behavior_familiar + believe_improve
                        + article_type + Match + article_type*Match +
                          (article_type|RR),
-                       data = long_data %>% filter(grepl(as.character(dv), question)) %>% filter((Order == 'RRFirst' & article_type == 'RR') | (Order == 'RRSecond' & article_type == 'nonRR')) %>% filter(guessed_right == 0),
+                       data = long_data %>% filter(grepl(as.character(dv), question)) %>% filter((Order == 'RRFirst' & article_type == 'RR') | (Order == 'RRSecond' & article_type == 'nonRR')) %>% filter(guessed_righ_firstt == 0),
                        prior = priors,
                        family = 'gaussian',
                        chains = 4)
