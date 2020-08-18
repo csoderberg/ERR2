@@ -33,7 +33,9 @@ long_data <- read_csv(here::here('cleaned_numeric_data_long.csv'), col_types = c
 wide_data <- read_csv(here::here('cleaned_numeric_data_wide.csv'), col_types = cols(Field = col_factor(),
                                                                                     Match = col_factor(),
                                                                                     Order = col_factor(),
-                                                                                    keyword_batch_comp = col_factor()))
+                                                                                    keyword_batch_comp = col_factor())) %>%
+                mutate(behavior_familiar = rowMeans(across(c(RRFamiliar,PreregFamiliar)), na.rm = T),
+                        believe_improve = rowMeans(across(c(BelieveRigor,BelieveQuality)), na.rm = T))
 
 # set up contrasts codes
 contrasts(wide_data$Field) <- contr.sum(3)
@@ -464,3 +466,57 @@ between_models_covariates_wrong %>%
   rename(coef = term,
          term = dv)) %>%
   dotwhisker::dwplot()
+
+## descriptives for guessing
+
+# means by article type and guessed right
+View(long_data %>% 
+       filter((Order == 'RRFirst' & article_type == 'RR') | (Order == 'RRSecond' & article_type == 'nonRR')) %>% 
+       group_by(question, article_type, guessed_right_first) %>% 
+       summarize(mean = mean(response, na.rm = T), n = n()))
+
+# what is correlated with guessing right?
+long_data %>% 
+  filter((Order == 'RRFirst' & article_type == 'RR') | (Order == 'RRSecond' & article_type == 'nonRR')) %>% 
+  distinct(participant_id, .keep_all = T) %>%
+  mutate(Field = as.numeric(Field),
+         EverPrereg = case_when(is.na(EverPrereg) ~ 0,
+                                !is.na(EverPrereg) ~ EverPrereg),
+         EverRR = case_when(is.na(EverRR) ~ 0,
+                            !is.na(EverRR) ~ EverPrereg)) %>%
+  select(guessed_right_first, Field, RRFamiliar, EverRR, PreregFamiliar, EverPrereg, BelieveRigor, BelieveQuality) %>%
+  cor(method = 'spearman') %>%
+  as_tibble() %>%
+  slice(1L)
+
+### within subjects models 
+within_diff_pooled_covariate_model <- function(dv, set_priors) {
+  within_model_diffs <- brm(as.formula(paste(dv, "~ Field + keyword_batch_comp + FirstQualified + SecondQualified + behavior_familiar + believe_improve + 
+                                                      Order + Match + Order*Match +
+                                                    (1|RR)")),
+                            data = wide_data,
+                            prior = set_priors, 
+                            family = 'gaussian',
+                            chains = 4)
+  return(within_model_diffs)
+}
+
+within_covariate_models <- crossing(dv = names(wide_data[,68:86]),
+                          set_priors = c(list(priors))) %>%
+  mutate(within_pooled_model_covariate_results = pmap(list(dv, set_priors), within_diff_pooled_covariate_model)) %>%
+  mutate(posteriors = pmap(list(within_pooled_model_covariate_results, variable = dv), create_posteriors))
+
+
+# get all intercepts into wide format for graphing
+intercepts <- c()
+
+for (i in 1:nrow(within_covariate_models)) {
+  intercepts <- bind_cols(intercepts, within_covariate_models$posteriors[[i]])
+}
+
+mcmc_areas(intercepts,
+           prob=.95)
+
+mcmc_intervals(intercepts, prob = .95)
+
+
