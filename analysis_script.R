@@ -496,7 +496,7 @@ long_data %>%
 
 ### within subjects models 
 within_diff_pooled_covariate_model <- function(dv, set_priors) {
-  within_model_diffs <- brm(as.formula(paste(dv, "~ Field + keyword_batch_comp + FirstQualified + SecondQualified + behavior_familiar + believe_improve + 
+  within_model_diffs <- brm(as.formula(paste(dv, "~ Field + keyword_batch_comp + firstqualified_c + secondqualified_c + behavior_familiar_c + believe_improve_c + 
                                                       Order + Match + Order*Match +
                                                     (1|RR)")),
                             data = wide_data,
