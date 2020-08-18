@@ -35,7 +35,12 @@ wide_data <- read_csv(here::here('cleaned_numeric_data_wide.csv'), col_types = c
                                                                                     Order = col_factor(),
                                                                                     keyword_batch_comp = col_factor())) %>%
                 mutate(behavior_familiar = rowMeans(across(c(RRFamiliar,PreregFamiliar)), na.rm = T),
-                        believe_improve = rowMeans(across(c(BelieveRigor,BelieveQuality)), na.rm = T))
+                        believe_improve = rowMeans(across(c(BelieveRigor,BelieveQuality)), na.rm = T)) %>%
+                mutate(behavior_familiar_c = behavior_familiar - mean(behavior_familiar),
+                       believe_improve_c = believe_improve - mean(believe_improve),
+                       firstqualified_c = FirstQualified - mean(FirstQualified),
+                       secondqualified_c = SecondQualified - mean(SecondQualified))
+                       
 
 # set up contrasts codes
 contrasts(wide_data$Field) <- contr.sum(3)
