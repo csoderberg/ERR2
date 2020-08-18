@@ -518,10 +518,30 @@ within_diff_pooled_covariate_model <- function(dv, set_priors) {
   return(within_model_diffs)
 }
 
+
+within_diff_pooled_covariate_guessed_model <- function(dv, set_priors, guessed) {
+  within_model_diffs <- brm(as.formula(paste(dv, "~ Field + keyword_batch_comp + firstqualified_c + secondqualified_c + behavior_familiar_c + believe_improve_c + 
+                                                      Order + Match + Order*Match +
+                                                    (1|RR)")),
+                            data = wide_data %>% filter(guessed_right == as.character(guessed)),
+                            prior = set_priors, 
+                            family = 'gaussian',
+                            chains = 4)
+  return(within_model_diffs)
+}
+
+
 within_covariate_models <- crossing(dv = names(wide_data[,68:86]),
                           set_priors = c(list(priors))) %>%
   mutate(within_pooled_model_covariate_results = pmap(list(dv, set_priors), within_diff_pooled_covariate_model)) %>%
   mutate(posteriors = pmap(list(within_pooled_model_covariate_results, variable = dv), create_posteriors))
+
+
+within_diff_covariate_guessed_models <- crossing(dv = names(wide_data[,68:86]),
+                                                 set_priors = c(list(priors)),
+                                                 guessed = c('both', 'half', 'neither')) %>%
+  mutate(within_pooled_model_covariate_guessed_results = pmap(list(dv, set_priors,guessed), within_diff_pooled_covariate_guessed_model)) %>%
+  mutate(posteriors = pmap(list(within_pooled_model_covariate_guessed_results, variable = dv), create_posteriors))
 
 
 # get all intercepts into wide format for graphing
