@@ -21,12 +21,12 @@ long_data <- read_csv(here::here('cleaned_numeric_data_long.csv'), col_types = c
             mutate(article_type = fct_relevel(article_type, c('nonRR', 'RR'))) %>%
             mutate(guessed_right_first = case_when(Order == 'RRFirst' & BelieveFirstRR == 1 ~ 1,
                                              Order == 'RRFirst' & (BelieveFirstRR == 2 | BelieveFirstRR == 3) ~ 0,
-                                             Order == 'RRSecond' & BelieveFirstRR == 1 | BelieveFirstRR == 2 ~ 0,
-                                             Order == 'RRSecond' & (BelieveFirstRR == 3) ~ 1),
+                                             Order == 'RRSecond' & (BelieveFirstRR == 1 | BelieveFirstRR == 2) ~ 0,
+                                             Order == 'RRSecond' & BelieveFirstRR == 3 ~ 1),
                    guessed_right_second = case_when(Order == 'RRSecond' & BelieveSecondRR == 1 ~ 1,
                                                    Order == 'RRSecond' & (BelieveSecondRR == 2 | BelieveSecondRR == 3) ~ 0,
-                                                   Order == 'RRFirst' & BelieveSecondRR == 1 | BelieveSecondRR == 2 ~ 0,
-                                                   Order == 'RRFirst' & (BelieveSecondRR == 3) ~ 1)) %>%
+                                                   Order == 'RRFirst' & (BelieveSecondRR == 1 | BelieveSecondRR == 2) ~ 0,
+                                                   Order == 'RRFirst' & BelieveSecondRR == 3 ~ 1)) %>%
             mutate(behavior_familiar = rowMeans(across(c(RRFamiliar,PreregFamiliar)), na.rm = T),
                    believe_improve = rowMeans(across(c(BelieveRigor,BelieveQuality)), na.rm = T))
 
@@ -39,7 +39,19 @@ wide_data <- read_csv(here::here('cleaned_numeric_data_wide.csv'), col_types = c
                 mutate(behavior_familiar_c = behavior_familiar - mean(behavior_familiar),
                        believe_improve_c = believe_improve - mean(believe_improve),
                        firstqualified_c = FirstQualified - mean(FirstQualified),
-                       secondqualified_c = SecondQualified - mean(SecondQualified))
+                       secondqualified_c = SecondQualified - mean(SecondQualified)) %>%
+                mutate(guessed_RR_right = case_when(Order == 'RRFirst' & BelieveFirstRR == 1 ~ 1,
+                                         Order == 'RRFirst' & (BelieveFirstRR == 2 | BelieveFirstRR == 3) ~ 0,
+                                         Order == 'RRSecond' & BelieveSecondRR == 1 ~ 0,
+                                         Order == 'RRSecond' & (BelieveSecondRR == 3 | BelieveSecondRR == 2) ~ 1),
+                      guessed_nonRR_right = case_when(Order == 'RRSecond' & BelieveFirstRR == 3 ~ 1,
+                                                Order == 'RRSecond' & (BelieveFirstRR == 2 | BelieveFirstRR == 1) ~ 0,
+                                                Order == 'RRFirst' & (BelieveSecondRR == 1 | BelieveSecondRR == 2) ~ 0,
+                                                Order == 'RRFirst' & (BelieveSecondRR == 3) ~ 1),
+                      guessed_right = case_when(guessed_RR_right == 1 & guessed_nonRR_right == 1 ~ 'both',
+                                              guessed_RR_right == 0 & guessed_nonRR_right == 0 ~ 'neither',
+                                              TRUE ~ 'half'))
+            
                        
 
 # set up contrasts codes
@@ -524,4 +536,15 @@ mcmc_areas(intercepts,
 
 mcmc_intervals(intercepts, prob = .95)
 
+  
+
+# descriptives for wide_data 
+wide_data %>% 
+  group_by(Order, guessed_nonRR_right, guessed_RR_right) %>% 
+  tally()
+
+# descriptives for wide_data 
+wide_data %>% 
+  group_by(Order, guessed_right) %>% 
+  tally()
 
