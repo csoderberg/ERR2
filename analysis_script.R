@@ -458,9 +458,9 @@ between_models_covariates_wrong <- crossing(dv = long_data %>% select(question) 
   mutate(posteriors = pmap(list(between_pooled_covariates_wrong_results, variable = dv), create_posteriors_btw))
 
 ## function to keep only article_type coefficient for graphing
-extract_coef <- function(fitted_model){
+extract_coef <- function(coef, fitted_model){
   tidied_result <- tidy(fitted_model) %>%
-    filter(grepl('^article_type2$', term) & effect == 'fixed')
+    filter(grepl(as.character(coef), term) & effect == 'fixed')
   
   return(tidied_result)
 }
@@ -556,7 +556,18 @@ mcmc_areas(intercepts,
 
 mcmc_intervals(intercepts, prob = .95)
 
-  
+# visualization for guessing models
+
+within_diff_covariate_guessed_models %>%
+  mutate(tidied = pmap(list('(Intercept)', within_pooled_model_covariate_guessed_results), extract_coef)) %>%
+  select(dv, guessed, tidied) %>%
+  unnest_wider(tidied) %>%
+  rbind() %>%
+  rename(coef = term,
+         term = dv,
+         model = guessed) %>%
+  dotwhisker::dwplot()  
+
 
 # descriptives for wide_data 
 wide_data %>% 
