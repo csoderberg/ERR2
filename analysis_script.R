@@ -423,6 +423,15 @@ mcmc_areas(intercepts,
 
 mcmc_intervals(intercepts, prob = .95)
 
+
+# visualization of results by article (for Justified as an example)
+between_models_covariates$between_pooled_covariates_results[[9]] %>% 
+  spread_draws(b_article_type2, r_RR[article, term]) %>% 
+  filter(term == 'article_type2') %>% 
+  median_qi(article_effect = b_article_type2 + r_RR, .width = c(.95, .9)) %>% 
+  ggplot(aes(y = article, x = article_effect, xmin = .lower, xmax = .upper)) + 
+  geom_pointinterval()
+
 ## split data and look at results (with covariates) for those who guess right and didn't guess right
 between_pooled_model_covariates_right <- function(dv, set_priors) {
   between_model <- brm(response ~ Field + keyword_batch_comp + FirstQualified + behavior_familiar + believe_improve
