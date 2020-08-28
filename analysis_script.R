@@ -36,6 +36,10 @@ wide_data <- read_csv(here::here('cleaned_numeric_data_wide.csv'), col_types = c
                                                                                     keyword_batch_comp = col_factor())) %>%
                 mutate(behavior_familiar = rowMeans(across(c(RRFamiliar,PreregFamiliar)), na.rm = T),
                         believe_improve = rowMeans(across(c(BelieveRigor,BelieveQuality)), na.rm = T)) %>%
+                mutate(RR_qualified = case_when(Order == 'RRFirst' ~ FirstQualified,
+                                                Order == 'RRSecond' ~ SecondQualified),
+                       Alt_qualified = case_when(Order == 'RRFirst' ~ SecondQualified,
+                                                 Order == 'RRSecond' ~ FirstQualified)) %>%
                 mutate(behavior_familiar_c = behavior_familiar - mean(behavior_familiar),
                        believe_improve_c = believe_improve - mean(believe_improve),
                        firstqualified_c = FirstQualified - mean(FirstQualified),
@@ -125,6 +129,15 @@ create_posteriors <- function(results, variable){
   return(posteriors)
 }
 
+# create more flexible version of posteriors function
+create_posteriors_term <- function(results, variable, term){
+  posteriors <- list(posterior_samples(results) %>%
+                       select(term) %>%
+                       rename(setNames(term, variable)))
+  
+  return(posteriors)
+}
+
 # Set up which model/prior/dv combinations to run
 within_models <- crossing(dv = names(wide_data[,68:86]),
                     set_priors = c(list(priors))) %>%
@@ -195,6 +208,7 @@ create_posteriors_btw <- function(results, variable){
   
   return(posteriors)
 }
+
 
 # Set up which model/prior/dv combinations to run for between models
 between_models <- crossing(dv = long_data %>% select(question) %>% distinct(question) %>% pull(question),
@@ -423,6 +437,30 @@ mcmc_areas(intercepts,
 
 mcmc_intervals(intercepts, prob = .95)
 
+#visualization for covariate parameter values
+between_models_covariates <- between_models_covariates %>%
+                                mutate(improve_posteriors = pmap(list(between_pooled_covariates_results, variable = dv, term = 'b_believe_improve'), create_posteriors_term),
+                                       familiar_posteriors = pmap(list(between_pooled_covariates_results, variable = dv, term = 'b_behavior_familiar'), create_posteriors_term),
+                                       qualified_posteriors = pmap(list(between_pooled_covariates_results, variable = dv, term = 'b_FirstQualified'), create_posteriors_term))
+
+believe_improve <- c()
+for (i in 1:nrow(between_models_covariates)) {
+  believe_improve <- bind_cols(believe_improve, between_models_covariates$improve_posteriors[[i]])
+}
+mcmc_intervals(believe_improve, prob = .95)
+
+behavior_familiar <- c()
+for (i in 1:nrow(between_models_covariates)) {
+  behavior_familiar <- bind_cols(behavior_familiar, between_models_covariates$familiar_posteriors[[i]])
+}
+mcmc_intervals(behavior_familiar, prob = .95)
+
+qualified <- c()
+for (i in 1:nrow(between_models_covariates)) {
+  qualified <- bind_cols(qualified, between_models_covariates$qualified_posteriors[[i]])
+}
+mcmc_intervals(qualified, prob = .95)
+
 
 # visualization of results by article (for Justified as an example)
 between_models_covariates$between_pooled_covariates_results[[9]] %>% 
@@ -553,7 +591,7 @@ bind_rows(long_data %>%
 
 ### within subjects models 
 within_diff_pooled_covariate_model <- function(dv, set_priors) {
-  within_model_diffs <- brm(as.formula(paste(dv, "~ Field + keyword_batch_comp + firstqualified_c + secondqualified_c + behavior_familiar_c + believe_improve_c + 
+  within_model_diffs <- brm(as.formula(paste(dv, "~ Field + keyword_batch_comp + RR_qualified + Alt_qualified + behavior_familiar + believe_improve + 
                                                       Order + Match + Order*Match +
                                                     (1|RR)")),
                             data = wide_data,
@@ -565,7 +603,7 @@ within_diff_pooled_covariate_model <- function(dv, set_priors) {
 
 
 within_diff_pooled_covariate_guessed_model <- function(dv, set_priors, guessed) {
-  within_model_diffs <- brm(as.formula(paste(dv, "~ Field + keyword_batch_comp + firstqualified_c + secondqualified_c + behavior_familiar_c + believe_improve_c + 
+  within_model_diffs <- brm(as.formula(paste(dv, "~ Field + keyword_batch_comp + RR_qualified + Alt_qualified + behavior_familiar + believe_improve + 
                                                       Order + Match + Order*Match +
                                                     (1|RR)")),
                             data = wide_data %>% filter(guessed_right == as.character(guessed)),
@@ -581,6 +619,10 @@ within_covariate_models <- crossing(dv = names(wide_data[,68:86]),
   mutate(within_pooled_model_covariate_results = pmap(list(dv, set_priors), within_diff_pooled_covariate_model)) %>%
   mutate(posteriors = pmap(list(within_pooled_model_covariate_results, variable = dv), create_posteriors))
 
+# look at posteriors for each covariate
+within_covariate_models <- within_covariate_models %>%
+                                mutate(improve_posterior = pmap(list(within_pooled_model_covariate_results, variable = dv, term = 'b_believe_improve_c'), create_posteriors_term),
+                                       familiar_posterior = pmap(list(within_pooled_model_covariate_results, variable = dv, term = 'b_behavior_familiar_c'), create_posteriors_term))
 
 within_diff_covariate_guessed_models <- crossing(dv = names(wide_data[,68:86]),
                                                  set_priors = c(list(priors)),
@@ -601,10 +643,45 @@ mcmc_areas(intercepts,
 
 mcmc_intervals(intercepts, prob = .95)
 
+# get all improve terms and graph
+improve_terms <- c()
+
+for (i in 1:nrow(within_covariate_models)) {
+  improve_terms  <- bind_cols(improve_terms , within_covariate_models$improve_posterior[[i]])
+}
+
+mcmc_areas(improve_terms ,
+           prob=.95)
+
+mcmc_intervals(improve_terms , prob = .95)
+
+# get all familiar terms and graph
+familiar_terms <- c()
+
+for (i in 1:nrow(within_covariate_models)) {
+  familiar_terms  <- bind_cols(familiar_terms , within_covariate_models$familiar_posterior[[i]])
+}
+
+mcmc_areas(familiar_terms ,
+           prob=.95)
+
+mcmc_intervals(familiar_terms , prob = .95)
+
 # visualization for guessing models
 
 within_diff_covariate_guessed_models %>%
   mutate(tidied = pmap(list('(Intercept)', within_pooled_model_covariate_guessed_results), extract_coef)) %>%
+  select(dv, guessed, tidied) %>%
+  unnest_wider(tidied) %>%
+  rbind() %>%
+  rename(coef = term,
+         term = dv,
+         model = guessed) %>%
+  dotwhisker::dwplot()  
+
+# visualization for guessing models improve term
+within_diff_covariate_guessed_models %>%
+  mutate(tidied = pmap(list('believe_improve_c', within_pooled_model_covariate_guessed_results), extract_coef)) %>%
   select(dv, guessed, tidied) %>%
   unnest_wider(tidied) %>%
   rbind() %>%
