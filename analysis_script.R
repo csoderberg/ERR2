@@ -468,7 +468,7 @@ bind_rows(long_data %>%
 
 ### within subjects models ###
 within_diff_pooled_improve_model <- function(dv, set_priors) {
-  within_model_diffs <- brm(as.formula(paste(dv, "~ Field + keyword_batch_comp + believe_improve + 
+  within_model_diffs <- brm(as.formula(paste(dv, "~ Field + keyword_batch_comp + improve_3L + 
                                                       Order + Match + Order*Match +
                                                     (1|RR)")),
                             data = wide_data,
@@ -479,7 +479,7 @@ within_diff_pooled_improve_model <- function(dv, set_priors) {
 }
 
 within_diff_pooled_familiar_model <- function(dv, set_priors) {
-  within_model_diffs <- brm(as.formula(paste(dv, "~ Field + keyword_batch_comp + behavior_familiar + 
+  within_model_diffs <- brm(as.formula(paste(dv, "~ Field + keyword_batch_comp + familiar_5L + 
                                                       Order + Match + Order*Match +
                                                     (1|RR)")),
                             data = wide_data,
