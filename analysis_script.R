@@ -36,6 +36,14 @@ wide_data <- read_csv(here::here('cleaned_numeric_data_wide.csv'), col_types = c
                                                                                     keyword_batch_comp = col_factor())) %>%
                 mutate(behavior_familiar = rowMeans(across(c(RRFamiliar,PreregFamiliar)), na.rm = T),
                         believe_improve = rowMeans(across(c(BelieveRigor,BelieveQuality)), na.rm = T)) %>%
+                
+                # add categorical predictors for improve and familiar variables
+                mutate(improve_3L = as.factor(case_when(believe_improve <= 0 ~ 0,
+                                              believe_improve > 0 & believe_improve <= 2 ~ 1,
+                                              believe_improve > 2 ~ 2)),
+                       familiar_5L = as.factor(floor(behavior_familiar)),
+                       improve_3L = fct_relevel(improve_3L, c('0', '1', '2')),
+                       familiar_5L = fct_relevel(familiar_5L, c('1', '2', '3', '4', '5'))) %>%
                 mutate(guessed_RR_right = case_when(Order == 'RRFirst' & BelieveFirstRR == 1 ~ 1,
                                          Order == 'RRFirst' & (BelieveFirstRR == 2 | BelieveFirstRR == 3) ~ 0,
                                          Order == 'RRSecond' & BelieveSecondRR == 1 ~ 0,
@@ -55,6 +63,8 @@ contrasts(wide_data$Field) <- contr.sum(3)
 contrasts(wide_data$keyword_batch_comp) <- contr.sum(2)
 contrasts(wide_data$Order) <- contr.sum(2)
 contrasts(wide_data$Match) <- contr.sum(2)
+contrasts(wide_data$improve_3L) <- contr.sum(3)
+contrasts(wide_data$familiar_5L) <- contr.sum(5)
 contrasts(long_data$article_type) <- contr.treatment(2)
 contrasts(long_data$Field) <- contr.sum(3)
 contrasts(long_data$keyword_batch_comp) <- contr.sum(2)
