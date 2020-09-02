@@ -125,14 +125,6 @@ within_diff_keywords2_model <- function(dv, set_priors) {
   return(within_model_keywords2)
 }
 
-# function to create graph of posterior samples for intercept
-create_posteriors <- function(results, variable){
-  posteriors <- list(posterior_samples(results) %>%
-                       select('b_Intercept') %>%
-                       rename(setNames('b_Intercept', variable)))
-  
-  return(posteriors)
-}
 
 # create more flexible version of posteriors function
 create_posteriors_term <- function(results, variable, term){
@@ -147,7 +139,7 @@ create_posteriors_term <- function(results, variable, term){
 within_models <- crossing(dv = names(wide_data[,68:86]),
                     set_priors = c(list(priors))) %>%
   mutate(within_pooled_model_results = pmap(list(dv, set_priors), within_diff_pooled_model)) %>%
-  mutate(posteriors = pmap(list(within_pooled_model_results, variable = dv), create_posteriors))
+  mutate(posteriors = pmap(list(within_pooled_model_results, variable = dv, term = 'b_Intercept'), create_posteriors_term))
 
 
 # get all intercepts into wide format for graphing
@@ -205,21 +197,12 @@ between_keywords2_model <- function(dv, set_priors) {
                                  chains = 4)
 }
 
-# function to create graph of posterior samples for intercept
-create_posteriors_btw <- function(results, variable){
-  posteriors <- list(posterior_samples(results) %>%
-                       select('b_article_type2') %>%
-                       rename(setNames('b_article_type2', variable)))
-  
-  return(posteriors)
-}
-
 
 # Set up which model/prior/dv combinations to run for between models
 between_models <- crossing(dv = long_data %>% select(question) %>% distinct(question) %>% pull(question),
                           set_priors = c(list(priors))) %>%
   mutate(between_pooled_model_results = pmap(list(dv, set_priors), between_pooled_model)) %>%
-  mutate(posteriors = pmap(list(between_pooled_model_results, variable = dv), create_posteriors_btw))
+  mutate(posteriors = pmap(list(between_pooled_model_results, variable = dv, term = 'b_article_type2'), create_posteriors_term))
 
 
 
