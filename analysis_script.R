@@ -38,11 +38,14 @@ wide_data <- read_csv(here::here('cleaned_numeric_data_wide.csv'), col_types = c
                         believe_improve = rowMeans(across(c(BelieveRigor,BelieveQuality)), na.rm = T)) %>%
                 
                 # add categorical predictors for improve and familiar variables
-                mutate(improve_3L = as.factor(case_when(believe_improve <= 0 ~ 0,
-                                              believe_improve > 0 & believe_improve <= 2 ~ 1,
-                                              believe_improve > 2 ~ 2)),
+                mutate(improve_6L = as.factor(case_when(believe_improve < 0 ~ 'negative',
+                                              believe_improve == 0 ~ 'neutral',
+                                              believe_improve > 0 & believe_improve <= 1 ~ 'slightly_more',
+                                              believe_improve > 1 & believe_improve <= 2 ~ 'moderately_more',
+                                              believe_improve > 2 & believe_improve <= 3 ~ 'much_more',
+                                              believe_improve > 3 & believe_improve <= 4 ~ 'substantially_more')),
                        familiar_5L = as.factor(floor(behavior_familiar)),
-                       improve_3L = fct_relevel(improve_3L, c('0', '1', '2')),
+                       improve_6L = fct_relevel(improve_6L, c('negative', 'neutral', 'slightly_more', 'moderately_more', 'much_more', 'substantially_more')),
                        familiar_5L = fct_relevel(familiar_5L, c('1', '2', '3', '4', '5'))) %>%
                 mutate(guessed_RR_right = case_when(Order == 'RRFirst' & BelieveFirstRR == 1 ~ 1,
                                          Order == 'RRFirst' & (BelieveFirstRR == 2 | BelieveFirstRR == 3) ~ 0,
@@ -63,7 +66,7 @@ contrasts(wide_data$Field) <- contr.sum(3)
 contrasts(wide_data$keyword_batch_comp) <- contr.sum(2)
 contrasts(wide_data$Order) <- contr.sum(2)
 contrasts(wide_data$Match) <- contr.sum(2)
-contrasts(wide_data$improve_3L) <- contr.sum(3)
+contrasts(wide_data$improve_6L) <- contr.sum(6)
 contrasts(wide_data$familiar_5L) <- contr.sum(5)
 contrasts(long_data$article_type) <- contr.treatment(2)
 contrasts(long_data$Field) <- contr.sum(3)
@@ -468,9 +471,9 @@ bind_rows(long_data %>%
 
 ### within subjects models ###
 within_diff_pooled_improve_model <- function(dv, set_priors) {
-  within_model_diffs <- brm(as.formula(paste(dv, "~ Field + keyword_batch_comp + improve_3L + 
+  within_model_diffs <- brm(as.formula(paste(dv, "~ Field + keyword_batch_comp + 
                                                       Order + Match + Order*Match +
-                                                    (1|RR)")),
+                                                    (1|RR) + (1|improve_5L)")),
                             data = wide_data,
                             prior = set_priors, 
                             family = 'gaussian',
@@ -504,7 +507,11 @@ within_diff_pooled_guessed_model <- function(dv, set_priors, guessed) {
 within_improve_models <- crossing(dv = names(wide_data[,68:86]),
                           set_priors = c(list(priors))) %>%
   mutate(within_pooled_model_improve_results = pmap(list(dv, set_priors), within_diff_pooled_improve_model)) %>%
-  mutate(posteriors = pmap(list(within_pooled_model_improve_results, variable = dv, term = 'b_Intercept'), create_posteriors_term))
+  mutate(posteriors = pmap(list(within_pooled_model_improve_results, variable = dv, term = 'b_Intercept'), create_posteriors_term)) 
+
+within_improve_models <- within_improve_models %>%
+  mutate(imrpove3L1_posteriors = pmap(list(within_pooled_model_improve_results, variable = dv, term = 'b_improve_3L1'), create_posteriors_term)) %>%
+mutate(improve3L2_posteriors = pmap(list(within_pooled_model_improve_results, variable = dv, term = 'b_improve_3L2'), create_posteriors_term)) 
 
 within_familiar_models <- crossing(dv = names(wide_data[,68:86]),
                                   set_priors = c(list(priors))) %>%
@@ -519,39 +526,23 @@ within_guessed_models <- crossing(dv = names(wide_data[,68:86]),
 
 # get all intercepts into wide format for graphing
 intercepts <- c()
-
-for (i in 1:nrow(within_covariate_models)) {
-  intercepts <- bind_cols(intercepts, within_covariate_models$posteriors[[i]])
+for (i in 1:nrow(within_improve_models)) {
+  intercepts <- bind_cols(intercepts, within_improve_models$posteriors[[i]])
 }
-
-mcmc_areas(intercepts,
-           prob=.95)
-
 mcmc_intervals(intercepts, prob = .95)
 
-# get all improve terms and graph
-improve_terms <- c()
-
-for (i in 1:nrow(within_covariate_models)) {
-  improve_terms  <- bind_cols(improve_terms , within_covariate_models$improve_posterior[[i]])
+improve_3L1 <- c()
+for (i in 1:nrow(within_improve_models)) {
+  improve_3L1 <- bind_cols(improve_3L1, within_improve_models$imrpove3L1_posteriors[[i]])
 }
+mcmc_intervals(improve_3L1, prob = .95)
 
-mcmc_areas(improve_terms ,
-           prob=.95)
-
-mcmc_intervals(improve_terms , prob = .95)
-
-# get all familiar terms and graph
-familiar_terms <- c()
-
-for (i in 1:nrow(within_covariate_models)) {
-  familiar_terms  <- bind_cols(familiar_terms , within_covariate_models$familiar_posterior[[i]])
+improve_3L2 <- c()
+for (i in 1:nrow(within_improve_models)) {
+  improve_3L2 <- bind_cols(improve_3L2, within_improve_models$improve3L2_posteriors[[i]])
 }
+mcmc_intervals(improve_3L2, prob = .95)
 
-mcmc_areas(familiar_terms ,
-           prob=.95)
-
-mcmc_intervals(familiar_terms , prob = .95)
 
 # visualization for guessing models
 
