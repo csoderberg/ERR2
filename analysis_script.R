@@ -456,13 +456,52 @@ bind_rows(long_data %>%
 within_diff_pooled_improve_model <- function(dv, set_priors) {
   within_model_diffs <- brm(as.formula(paste(dv, "~ Field + keyword_batch_comp + 
                                                       Order + Match + Order*Match +
-                                                    (1|RR) + (1|improve_5L)")),
+                                                    (1|RR) + (1|improve_6L)")),
                             data = wide_data,
                             prior = set_priors, 
                             family = 'gaussian',
                             chains = 4)
   return(within_model_diffs)
 }
+
+
+# example with 1 dv & partial pooling across improve levels
+diff_rigor_model <- brm(diff_analysis_rigor ~ Field + keyword_batch_comp + 
+                          Order + Match + Order*Match +
+                          (1|RR) + (1|improve_6L),
+                        data = wide_data,
+                        prior = priors,
+                        family = 'gaussian',
+                        chains = 4,
+                        control = list(adapt_delta = 0.95))
+
+diff_rigor_model %>%
+  spread_draws(b_Intercept, r_improve_6L[improve_level,]) %>%
+  median_qi(cond_mean = b_Intercept + r_improve_6L, .width = c(.95, .90)) %>%
+  mutate(improve_level = fct_relevel(improve_level, c('negative', 'neutral', 'slightly_more', 'moderately_more', 'much_more', 'substantially_more'))) %>%
+  ggplot(aes(y = improve_level, x = cond_mean, xmin = .lower, xmax = .upper)) +
+  geom_pointinterval()
+
+diff_rigor_model %>% 
+  spread_draws(r_improve_6L[improve_level,]) %>%
+  compare_levels(r_improve_6L, by = improve_level) %>%
+  ggplot(aes(y = improve_level, x = r_improve_6L)) +
+  stat_halfeye()
+
+# example with 1 dv & no partial pooling across improve levels
+diff_rigor_model_fixed <- brm(diff_analysis_rigor ~ Field + keyword_batch_comp + 
+                          Order + Match + Order*Match + improve_6L +
+                          (1|RR),
+                        data = wide_data,
+                        prior = priors,
+                        family = 'gaussian',
+                        chains = 4,
+                        control = list(adapt_delta = 0.95))
+
+
+diff_rigor_model_fixed %>%
+  spread_draws(b_Intercept, b_improve_6L1) %>%
+  median_qi(cond_mean = b_Intercept + b_improve_6L1, .width = c(.95))
 
 within_diff_pooled_familiar_model <- function(dv, set_priors) {
   within_model_diffs <- brm(as.formula(paste(dv, "~ Field + keyword_batch_comp + familiar_5L + 
@@ -474,6 +513,58 @@ within_diff_pooled_familiar_model <- function(dv, set_priors) {
                             chains = 4)
   return(within_model_diffs)
 }
+
+# model fit checks
+summary(diff_rigor_model)
+pp_check(diff_rigor_model)
+WAIC(diff_rigor_model)
+loo(diff_rigor_model)
+
+summary(diff_rigor_model_fixed )
+pp_check(diff_rigor_model_fixed )
+WAIC(diff_rigor_model_fixed )
+loo(diff_rigor_model_fixed )
+
+
+# example with 1 dv & partial pooling across familiar levels
+diff_rigor_model_familiar <- brm(diff_analysis_rigor ~ Field + keyword_batch_comp + 
+                          Order + Match + Order*Match +
+                          (1|RR) + (1|familiar_5L),
+                        data = wide_data,
+                        prior = priors,
+                        family = 'gaussian',
+                        chains = 4,
+                        control = list(adapt_delta = 0.99))
+
+diff_rigor_model_familiar %>%
+  spread_draws(b_Intercept, r_familiar_5L[familiar_level,]) %>%
+  median_qi(cond_mean = b_Intercept + r_familiar_5L, .width = c(.95, .90)) %>%
+  ggplot(aes(y = familiar_level, x = cond_mean, xmin = .lower, xmax = .upper)) +
+  geom_pointinterval()
+
+diff_rigor_model_familiar %>% 
+  spread_draws(r_familiar_5L[familiar_level,]) %>%
+  compare_levels(r_familiar_5L, by = familiar_level) %>%
+  ggplot(aes(y = familiar_level, x = r_familiar_5L)) +
+  stat_halfeye()
+
+
+# example with 1 dv & no partial pooling across improve familiar
+diff_rigor_model_familiar_fixed <- brm(diff_analysis_rigor ~ Field + keyword_batch_comp + 
+                                Order + Match + Order*Match + familiar_5L +
+                                (1|RR),
+                              data = wide_data,
+                              prior = priors,
+                              family = 'gaussian',
+                              chains = 4,
+                              control = list(adapt_delta = 0.99))
+
+
+diff_rigor_model_familiar_fixed %>%
+  spread_draws(b_Intercept, b_familiar_5L1) %>%
+  median_qi(cond_mean = b_Intercept + b_familiar_5L1, .width = c(.95))
+
+
 
 within_diff_pooled_guessed_model <- function(dv, set_priors, guessed) {
   within_model_diffs <- brm(as.formula(paste(dv, "~ Field + keyword_batch_comp + guessed_right 
@@ -560,4 +651,3 @@ wide_data %>%
 wide_data %>% 
   group_by(Order, guessed_right) %>% 
   tally()
-
