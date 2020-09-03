@@ -580,10 +580,21 @@ within_diff_pooled_guessed_model <- function(dv, set_priors, guessed) {
 }
 
 ### EFA of diff DVs to investigate potential exchangability
-#### exploratory factor analysis ####
+
+#initial correlations
+wide_data %>%
+  select(starts_with('diff')) %>%
+  cor(use = "pairwise.complete.obs") %>%
+  corrplot(type = 'upper', order="hclust")
 
 wide_data %>%
   select(participant_id, starts_with('diff')) %>%
+  column_to_rownames('participant_id') %>%
+  fa.parallel()
+
+wide_data %>%
+  select(participant_id, starts_with('diff')) %>%
+  select(-c(diff_abstract_aligned, diff_intro_importance, diff_question_novel)) %>%
   column_to_rownames('participant_id') %>%
   fa.parallel()
 
@@ -594,19 +605,46 @@ efa3 <- wide_data %>%
 efa3
 fa.diagram(efa3)
 
-
-
-wide_data %>%
-  select(participant_id, starts_with('RR'), starts_with('Alt')) %>%
-  select(-c(RR, RRFamiliar)) %>%
+efa3_cutdown <- wide_data %>%
+  select(participant_id, starts_with('diff')) %>%
+  select(-c(diff_abstract_aligned, diff_intro_importance, diff_question_novel)) %>%
   column_to_rownames('participant_id') %>%
-  fa.parallel()
+  fa(nfactors = 3, rotate = 'oblimin') 
 
-efa6 <- wide_data %>%
-  select(participant_id, starts_with('RR'), starts_with('Alt')) %>%
-  select(-c(RR, RRFamiliar)) %>%
+efa2_cutdown <- wide_data %>%
+  select(participant_id, starts_with('diff')) %>%
+  select(-c(diff_abstract_aligned, diff_intro_importance, diff_question_novel)) %>%
   column_to_rownames('participant_id') %>%
-  fa(nfactors = 6, rotate = 'oblimin')
+  fa(nfactors = 2, rotate = 'oblimin') 
 
-efa6
-fa.diagram(efa6)
+efa3_cutdown
+efa2_cutdown
+fa.diagram(efa3_cutdown)
+fa.diagram(efa2_cutdown)
+
+### within model with DVs as ML component
+mlm_dvs_data <- wide_data %>%
+  select(starts_with('diff'), participant_id, RR, Field, keyword_batch_comp, Order, Match) %>%
+  pivot_longer(cols = starts_with('diff'), names_to = 'questions', values_to = 'response') %>%
+  mutate(questions = as.factor(questions))
+
+within_alldvs <-  brm(response ~ Field + keyword_batch_comp + 
+                            Order + Match + Order*Match +
+                            (1|RR) + (1|participant_id) + (1|questions),
+                          data = mlm_dvs_data,
+                          prior = priors,
+                          family = 'gaussian',
+                          chains = 4,
+                          iter = 3000,
+                          control = list(adapt_delta = 0.95))
+
+summary(within_alldvs)
+pp_check(within_alldvs)
+WAIC(within_alldvs)
+loo(within_alldvs)
+
+within_alldvs %>%
+  spread_draws(b_Intercept, r_questions[dv,]) %>%
+  median_qi(question_mean = b_Intercept + r_questions, .width = c(.95, .90)) %>%
+  ggplot(aes(y = dv, x = question_mean, xmin = .lower, xmax = .upper)) +
+  geom_pointinterval()
