@@ -9,6 +9,8 @@ library(broom)
 library(dotwhisker)
 library(skimr)
 library(broom.mixed)
+library(lavaan)
+library(psych)
 
 # load data
 long_data <- read_csv(here::here('cleaned_numeric_data_long.csv'), col_types = cols(article_type = col_factor(),
@@ -576,3 +578,35 @@ within_diff_pooled_guessed_model <- function(dv, set_priors, guessed) {
                             chains = 4)
   return(within_model_diffs)
 }
+
+### EFA of diff DVs to investigate potential exchangability
+#### exploratory factor analysis ####
+
+wide_data %>%
+  select(participant_id, starts_with('diff')) %>%
+  column_to_rownames('participant_id') %>%
+  fa.parallel()
+
+efa3 <- wide_data %>%
+          select(participant_id, starts_with('diff')) %>%
+          column_to_rownames('participant_id') %>%
+          fa(nfactors = 3, rotate = 'oblimin') 
+efa3
+fa.diagram(efa3)
+
+
+
+wide_data %>%
+  select(participant_id, starts_with('RR'), starts_with('Alt')) %>%
+  select(-c(RR, RRFamiliar)) %>%
+  column_to_rownames('participant_id') %>%
+  fa.parallel()
+
+efa6 <- wide_data %>%
+  select(participant_id, starts_with('RR'), starts_with('Alt')) %>%
+  select(-c(RR, RRFamiliar)) %>%
+  column_to_rownames('participant_id') %>%
+  fa(nfactors = 6, rotate = 'oblimin')
+
+efa6
+fa.diagram(efa6)
