@@ -648,3 +648,22 @@ within_alldvs %>%
   median_qi(question_mean = b_Intercept + r_questions, .width = c(.95, .90)) %>%
   ggplot(aes(y = dv, x = question_mean, xmin = .lower, xmax = .upper)) +
   geom_pointinterval()
+
+
+### compare model estimates from hierarchical and non-hierarchical DV models
+rbind(within_models %>% 
+  mutate(draws = map(within_pooled_model_results, spread_draws, b_Intercept),
+         posterior_info = map(draws, median_qi, .width = c(.95, .90))) %>%
+  select(dv, posterior_info) %>%
+  unnest(posterior_info) %>%
+  rename(question_mean = b_Intercept) %>%
+  mutate(model = 'no dv pooling'),
+  within_alldvs %>%
+    spread_draws(b_Intercept, r_questions[dv,]) %>%
+    median_qi(question_mean = b_Intercept + r_questions, .width = c(.95, .90)) %>%
+    mutate(model = 'partial dv pooling')) %>%
+  ggplot(aes(y = dv, x = question_mean, xmin = .lower, xmax = .upper, color = model)) +
+  geom_pointinterval(position=position_dodge(width=0.5)) +
+  geom_vline(xintercept = 0) +
+  theme_classic()
+  
