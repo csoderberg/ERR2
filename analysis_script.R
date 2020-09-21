@@ -68,8 +68,8 @@ contrasts(wide_data$Field) <- contr.sum(3)
 contrasts(wide_data$keyword_batch_comp) <- contr.sum(2)
 contrasts(wide_data$Order) <- contr.sum(2)
 contrasts(wide_data$Match) <- contr.sum(2)
-contrasts(wide_data$improve_6L) <- contr.sum(6)
-contrasts(wide_data$familiar_5L) <- contr.sum(5)
+contrasts(wide_data$improve_6L) <- contr.treatment(6)
+contrasts(wide_data$familiar_5L) <- contr.treatment(5)
 contrasts(long_data$article_type) <- contr.treatment(2)
 contrasts(long_data$Field) <- contr.sum(3)
 contrasts(long_data$keyword_batch_comp) <- contr.sum(2)
@@ -502,8 +502,53 @@ diff_rigor_model_fixed <- brm(diff_analysis_rigor ~ Field + keyword_batch_comp +
 
 
 diff_rigor_model_fixed %>%
-  spread_draws(b_Intercept, b_improve_6L1) %>%
-  median_qi(cond_mean = b_Intercept + b_improve_6L1, .width = c(.95))
+  spread_draws(b_Intercept) %>%
+  median_qi(cond_mean = b_Intercept, .width = c(.95))
+
+test <- brm(diff_analysis_rigor ~ Field + keyword_batch_comp + 
+              Order + Match + Order*Match + believe_improve +
+              (1|RR),
+            data = wide_data,
+            prior = priors,
+            family = 'gaussian',
+            chains = 4,
+            control = list(adapt_delta = 0.95))
+
+test %>%
+  spread_draws(b_Intercept) %>%
+  median_qi(cond_mean = b_Intercept, .width = c(.95))
+
+## compare estimates from 2 models:
+
+rbind(diff_rigor_model %>%
+  spread_draws(b_Intercept, r_improve_6L[improve_level,]) %>%
+  median_qi(cond_mean = b_Intercept + r_improve_6L, .width = c(.95, .90)) %>%
+  mutate(model = 'RE variable'),
+    rbind(diff_rigor_model_fixed %>% spread_draws(b_Intercept) %>%
+            median_qi(cond_mean = b_Intercept, .width = c(.95, .90)) %>%
+            mutate(improve_level = 'negative'),
+          diff_rigor_model_fixed %>% spread_draws(b_Intercept, b_improve_6L2) %>%
+            median_qi(cond_mean = b_Intercept + b_improve_6L2, .width = c(.95, .90)) %>%
+            mutate(improve_level = 'neutral'),
+          diff_rigor_model_fixed %>% spread_draws(b_Intercept, b_improve_6L3) %>%
+            median_qi(cond_mean = b_Intercept + b_improve_6L3, .width = c(.95, .90)) %>%
+            mutate(improve_level = 'slightly_more'),
+          diff_rigor_model_fixed %>% spread_draws(b_Intercept, b_improve_6L4) %>%
+            median_qi(cond_mean = b_Intercept + b_improve_6L4, .width = c(.95, .90)) %>%
+            mutate(improve_level = 'moderately_more'),
+          diff_rigor_model_fixed %>% spread_draws(b_Intercept, b_improve_6L5) %>%
+            median_qi(cond_mean = b_Intercept + b_improve_6L5, .width = c(.95, .90)) %>%
+            mutate(improve_level = 'much_more'),
+          diff_rigor_model_fixed %>% spread_draws(b_Intercept, b_improve_6L6) %>%
+            median_qi(cond_mean = b_Intercept + b_improve_6L6, .width = c(.95, .90)) %>%
+            mutate(improve_level = 'substantially_more')) %>% mutate(model = 'FE variable')) %>%
+  mutate(improve_level = as.factor(improve_level),
+         improve_level = fct_relevel(improve_level, c('negative', 'neutral', 'slightly_more', 'moderately_more', 'much_more', 'substantially_more'))) %>%
+  ggplot(aes(y = improve_level, x = cond_mean, xmin = .lower, xmax = .upper, color = model)) +
+  geom_pointinterval(position=position_dodge(width=0.5)) +
+  geom_vline(xintercept = 0) +
+  theme_classic()
+
 
 within_diff_pooled_familiar_model <- function(dv, set_priors) {
   within_model_diffs <- brm(as.formula(paste(dv, "~ Field + keyword_batch_comp + familiar_5L + 
@@ -563,8 +608,8 @@ diff_rigor_model_familiar_fixed <- brm(diff_analysis_rigor ~ Field + keyword_bat
 
 
 diff_rigor_model_familiar_fixed %>%
-  spread_draws(b_Intercept, b_familiar_5L1) %>%
-  median_qi(cond_mean = b_Intercept + b_familiar_5L1, .width = c(.95))
+  spread_draws(b_Intercept) %>%
+  median_qi(cond_mean = b_Intercept, .width = c(.95))
 
 
 
@@ -579,13 +624,39 @@ within_diff_pooled_guessed_model <- function(dv, set_priors, guessed) {
   return(within_model_diffs)
 }
 
+
+rbind(diff_rigor_model_familiar %>%
+        spread_draws(b_Intercept, r_familiar_5L[familiar_level,]) %>%
+        median_qi(cond_mean = b_Intercept + r_familiar_5L, .width = c(.95, .90)) %>%
+        mutate(model = 'RE variable'),
+      rbind(
+            diff_rigor_model_familiar_fixed %>% spread_draws(b_Intercept) %>%
+              median_qi(cond_mean = b_Intercept, .width = c(.95, .90)) %>%
+              mutate(familiar_level = '1'),
+            diff_rigor_model_familiar_fixed %>% spread_draws(b_Intercept, b_familiar_5L2) %>%
+              median_qi(cond_mean = b_Intercept + b_familiar_5L2, .width = c(.95, .90)) %>%
+              mutate(familiar_level = '2'),
+            diff_rigor_model_familiar_fixed %>% spread_draws(b_Intercept, b_familiar_5L3) %>%
+              median_qi(cond_mean = b_Intercept + b_familiar_5L3, .width = c(.95, .90)) %>%
+              mutate(familiar_level = '3'),
+            diff_rigor_model_familiar_fixed %>% spread_draws(b_Intercept, b_familiar_5L4) %>%
+              median_qi(cond_mean = b_Intercept + b_familiar_5L4, .width = c(.95, .90)) %>%
+              mutate(familiar_level = '4'),
+            diff_rigor_model_familiar_fixed %>% spread_draws(b_Intercept, b_familiar_5L5) %>%
+              median_qi(cond_mean = b_Intercept + b_familiar_5L5, .width = c(.95, .90)) %>%
+              mutate(familiar_level = '5')) %>% mutate(model = 'FE variable')) %>%
+  ggplot(aes(y = familiar_level, x = cond_mean, xmin = .lower, xmax = .upper, color = model)) +
+  geom_pointinterval(position=position_dodge(width=0.5)) +
+  geom_vline(xintercept = 0) +
+  theme_classic()
+
 ### EFA of diff DVs to investigate potential exchangability
 
 #initial correlations
 wide_data %>%
   select(starts_with('diff')) %>%
   cor(use = "pairwise.complete.obs") %>%
-  corrplot(type = 'upper', order="hclust")
+  corrplot(type = 'upper', order="hclust", method = 'number')
 
 wide_data %>%
   select(participant_id, starts_with('diff')) %>%
@@ -624,7 +695,7 @@ fa.diagram(efa2_cutdown)
 
 ### within model with DVs as ML component
 mlm_dvs_data <- wide_data %>%
-  select(starts_with('diff'), participant_id, RR, Field, keyword_batch_comp, Order, Match) %>%
+  select(starts_with('diff'), participant_id, RR, Field, keyword_batch_comp, Order, Match, improve_6L, familiar_5L) %>%
   pivot_longer(cols = starts_with('diff'), names_to = 'questions', values_to = 'response') %>%
   mutate(questions = as.factor(questions))
 
@@ -667,3 +738,60 @@ rbind(within_models %>%
   geom_vline(xintercept = 0) +
   theme_classic()
   
+
+
+# partial pooling across all DVs and improve
+
+within_alldvs_improve <-  brm(response ~ Field + keyword_batch_comp + 
+                        Order + Match + Order*Match +
+                        (1|RR) + (1|participant_id) + (1|questions) + (1|improve_6L),
+                      data = mlm_dvs_data,
+                      prior = priors,
+                      family = 'gaussian',
+                      chains = 4,
+                      iter = 3000,
+                      control = list(adapt_delta = 0.99, max_treedepth = 15))
+
+summary(within_alldvs_improve)
+pp_check(within_alldvs_improve)
+WAIC(within_alldvs_improve)
+loo(within_alldvs_improve)
+
+within_alldvs_improve %>%
+  spread_draws(b_Intercept, r_improve_6L[improve_level,], r_questions[DV,]) %>%
+  median_qi(cond_mean = b_Intercept + r_improve_6L + r_questions, .width = c(.95, .90)) %>%
+  ungroup() %>%
+  mutate(improve_level = as.factor(improve_level),
+         improve_level = fct_relevel(improve_level, c('negative', 'neutral', 'slightly_more', 'moderately_more', 'much_more', 'substantially_more'))) %>%
+  ggplot(aes(y = DV, x = cond_mean, xmin = .lower, xmax = .upper, color = improve_level)) +
+  geom_pointinterval(position=position_dodge(width=1)) +
+  geom_vline(xintercept = 0) +
+  theme_classic()
+
+# partial pooling across all DVs and familiar
+
+within_alldvs_familiar <-  brm(response ~ Field + keyword_batch_comp + 
+                                Order + Match + Order*Match +
+                                (1|RR) + (1|participant_id) + (1|questions) + (1|familiar_5L),
+                              data = mlm_dvs_data,
+                              prior = priors,
+                              family = 'gaussian',
+                              chains = 4,
+                              iter = 3000,
+                              control = list(adapt_delta = 0.99, max_treedepth = 15))
+
+summary(within_alldvs_familiar)
+pp_check(within_alldvs_familiar)
+WAIC(within_alldvs_familiar)
+loo(within_alldvs_familiar)
+
+within_alldvs_familiar %>%
+  spread_draws(b_Intercept, r_familiar_5L[familiar_level,], r_questions[DV,]) %>%
+  median_qi(cond_mean = b_Intercept + r_familiar_5L + r_questions, .width = c(.95, .90)) %>%
+  ungroup() %>%
+  mutate(improve_level = as.factor(familiar_level),
+         improve_level = fct_relevel(improve_level, c(familiar_5L, c('1', '2', '3', '4', '5')))) %>%
+  ggplot(aes(y = DV, x = cond_mean, xmin = .lower, xmax = .upper, color = familiar_level)) +
+  geom_pointinterval(position=position_dodge(width=1)) +
+  geom_vline(xintercept = 0) +
+  theme_classic()
