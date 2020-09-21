@@ -768,6 +768,18 @@ within_alldvs_improve %>%
   geom_vline(xintercept = 0) +
   theme_classic()
 
+### graph collapsed across DVs
+within_alldvs_improve %>%
+  spread_draws(b_Intercept, r_improve_6L[improve_level,]) %>%
+  median_qi(cond_mean = b_Intercept + r_improve_6L, .width = c(.95, .90)) %>%
+  ungroup() %>%
+  mutate(improve_level = as.factor(improve_level),
+         improve_level = fct_relevel(improve_level, c('negative', 'neutral', 'slightly_more', 'moderately_more', 'much_more', 'substantially_more'))) %>%
+  ggplot(aes(y = improve_level, x = cond_mean, xmin = .lower, xmax = .upper)) +
+  geom_pointinterval(position=position_dodge(width=1)) +
+  geom_vline(xintercept = 0) +
+  theme_classic()
+
 # partial pooling across all DVs and familiar
 
 within_alldvs_familiar <-  brm(response ~ Field + keyword_batch_comp + 
@@ -789,9 +801,21 @@ within_alldvs_familiar %>%
   spread_draws(b_Intercept, r_familiar_5L[familiar_level,], r_questions[DV,]) %>%
   median_qi(cond_mean = b_Intercept + r_familiar_5L + r_questions, .width = c(.95, .90)) %>%
   ungroup() %>%
-  mutate(improve_level = as.factor(familiar_level),
-         improve_level = fct_relevel(improve_level, c(familiar_5L, c('1', '2', '3', '4', '5')))) %>%
+  mutate(familiar_level = as.factor(familiar_level),
+         familiar_level = fct_relevel(familiar_level, c('1', '2', '3', '4', '5'))) %>%
   ggplot(aes(y = DV, x = cond_mean, xmin = .lower, xmax = .upper, color = familiar_level)) +
+  geom_pointinterval(position=position_dodge(width=1)) +
+  geom_vline(xintercept = 0) +
+  theme_classic()
+
+### graph collapsed across DVs
+within_alldvs_familiar %>%
+  spread_draws(b_Intercept, r_familiar_5L[familiar_level,]) %>%
+  median_qi(cond_mean = b_Intercept + r_familiar_5L, .width = c(.95, .90)) %>%
+  ungroup() %>%
+  mutate(familiar_level = as.factor(familiar_level),
+         familiar_level = fct_relevel(familiar_level, c('1', '2', '3', '4', '5'))) %>%
+  ggplot(aes(y = familiar_level, x = cond_mean, xmin = .lower, xmax = .upper)) +
   geom_pointinterval(position=position_dodge(width=1)) +
   geom_vline(xintercept = 0) +
   theme_classic()
