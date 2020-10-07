@@ -740,12 +740,14 @@ main_graph_creation <- function(data) {
     ggplot(aes(y = dv, x = dv_estimates, fill = stat(x <= 0))) +
     stat_halfeye(.width = c(.95, .8)) +
     scale_x_continuous(breaks=seq(-.5, 1.5, .5),
-                       limits = c(-.75, 1.75)) +
+                       limits = c(-.75, 1.75),
+                       name = 'Difference between RR and non-RR articles') +
     geom_vline(xintercept = 0, linetype = "dashed") +
     theme_minimal() +
     theme(legend.position = "none",
-          axis.title = element_blank(),
-          axis.text = element_text(size = 12),
+          axis.title.y = element_blank(),
+          axis.title.x = element_text(size = 16),
+          axis.text = element_text(size = 16),
           panel.grid.major.y = element_blank(),
           panel.grid.minor.y = element_blank())
 }
@@ -767,9 +769,10 @@ intro_qs <- with_alldvs_graph_nums %>%
   main_graph_creation() +
   scale_fill_manual(values = c("#fbb4ae", "gray80")) +
   theme(axis.text.x = element_blank(),
+        axis.title.x = element_blank(),
         axis.ticks.x = element_blank()) +
   ggtitle('Evaluation before knowing study outcomes') +
-  theme(plot.title = element_text(face = 'bold'))
+  theme(plot.title = element_text(face = 'bold', size = 18))
 
 
 results_qs <- with_alldvs_graph_nums %>%
@@ -789,9 +792,10 @@ results_qs <- with_alldvs_graph_nums %>%
   main_graph_creation() +
   scale_fill_manual(values = c("#b3cde3", "gray80")) +
   theme(axis.text.x = element_blank(),
+        axis.title.x = element_blank(),
         axis.ticks.x = element_blank()) +
   ggtitle('Evaluation after knowing study outcomes') +
-  theme(plot.title = element_text(face = 'bold'))
+  theme(plot.title = element_text(face = 'bold', size = 18))
 
 
 abstract_qs <- with_alldvs_graph_nums %>%
@@ -806,11 +810,17 @@ abstract_qs <- with_alldvs_graph_nums %>%
                 main_graph_creation() +
   scale_fill_manual(values = c("#ccebc5", "gray80"))+
   ggtitle('Evaluation after finishing the paper') +
-  theme(plot.title = element_text(face = 'bold'))
+  theme(plot.title = element_text(face = 'bold', size = 18),
+        axis.title.x = element_text(margin = margin(t = 10)))
 
 
 combined_plot <- intro_qs / results_qs / abstract_qs + plot_layout(heights = c(8, 7, 4))
 combined_plot
+
+
+
+scale_y_discrete(labels = function(x) str_wrap(str_replace_all(x, "foo" , " "),
+                                               width = 24)) +
 
 within_alldvs %>%
   spread_draws(b_Intercept, r_questions[dv,]) %>%
