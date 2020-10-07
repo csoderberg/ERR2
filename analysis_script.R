@@ -766,8 +766,6 @@ intro_qs <- with_alldvs_graph_nums %>%
                       dv == 'diff_question_novel' ~ 'Novelty of question')) %>%
   main_graph_creation() +
   scale_fill_manual(values = c("#fbb4ae", "gray80")) +
-  scale_y_discrete(labels = function(x) str_wrap(str_replace_all(x, "foo" , " "),
-                                                 width = 24)) +
   theme(axis.text.x = element_blank(),
         axis.ticks.x = element_blank()) +
   ggtitle('Evaluation before knowing study outcomes') +
@@ -790,8 +788,6 @@ results_qs <- with_alldvs_graph_nums %>%
                         dv == 'diff_result_innovative' ~ 'Innovative results')) %>%
   main_graph_creation() +
   scale_fill_manual(values = c("#b3cde3", "gray80")) +
-  scale_y_discrete(labels = function(x) str_wrap(str_replace_all(x, "foo" , " "),
-                                                 width = 24)) +
   theme(axis.text.x = element_blank(),
         axis.ticks.x = element_blank()) +
   ggtitle('Evaluation after knowing study outcomes') +
@@ -809,8 +805,6 @@ abstract_qs <- with_alldvs_graph_nums %>%
                         dv == 'diff_inspire' ~ 'Inspire new research')) %>%
                 main_graph_creation() +
   scale_fill_manual(values = c("#ccebc5", "gray80"))+
-  scale_y_discrete(labels = function(x) str_wrap(str_replace_all(x, "foo" , " "),
-                                                 width = 24)) +
   ggtitle('Evaluation after finishing the paper') +
   theme(plot.title = element_text(face = 'bold'))
 
