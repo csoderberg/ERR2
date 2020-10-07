@@ -811,7 +811,7 @@ abstract_qs <- with_alldvs_graph_nums %>%
   scale_fill_manual(values = c("#ccebc5", "gray80"))+
   ggtitle('Evaluation after finishing the paper') +
   theme(plot.title = element_text(face = 'bold', size = 18),
-        axis.title.x = element_text(margin = margin(t = 10)))
+        axis.title.x = element_text(hjust = .15, vjust = 0))
 
 
 combined_plot <- intro_qs / results_qs / abstract_qs + plot_layout(heights = c(8, 7, 4))
