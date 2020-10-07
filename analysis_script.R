@@ -11,6 +11,8 @@ library(skimr)
 library(broom.mixed)
 library(lavaan)
 library(psych)
+library(patchwork)
+library(ggdist)
 
 # load data
 long_data <- read_csv(here::here('cleaned_numeric_data_long.csv'), col_types = cols(article_type = col_factor(),
@@ -707,7 +709,7 @@ within_alldvs <-  brm(response ~ Field + keyword_batch_comp +
                           family = 'gaussian',
                           chains = 4,
                           iter = 3000,
-                          control = list(adapt_delta = 0.95))
+                          control = list(adapt_delta = 0.95, max_treedepth = 15))
 
 summary(within_alldvs)
 pp_check(within_alldvs)
@@ -720,6 +722,183 @@ within_alldvs %>%
   ggplot(aes(y = dv, x = question_mean, xmin = .lower, xmax = .upper)) +
   geom_pointinterval()
 
+
+# main figure
+with_alldvs_graph_nums <- within_alldvs %>%
+  spread_draws(b_Intercept, r_questions[dv,]) %>%
+  mutate(dv_estimates = b_Intercept + r_questions) %>%
+  left_join(within_alldvs %>%
+         spread_draws(b_Intercept, r_questions[dv,]) %>% 
+         median_qi(dv_median = b_Intercept + r_questions) %>% 
+         select(dv, dv_median), by = 'dv') %>%
+  ungroup()
+
+main_graph_creation <- function(data) {
+  data %>%  
+    mutate(dv = as.factor(dv),
+           dv = fct_reorder(dv, dv_median)) %>%
+    ggplot(aes(y = dv, x = dv_estimates, fill = stat(x <= 0))) +
+    stat_halfeye(.width = c(.95, .8)) +
+    scale_x_continuous(breaks=seq(-.5, 1.5, .5),
+                       limits = c(-.75, 1.75)) +
+    geom_vline(xintercept = 0, linetype = "dashed") +
+    theme_minimal() +
+    theme(legend.position = "none",
+          axis.title = element_blank(),
+          axis.text = element_text(size = 12),
+          panel.grid.major.y = element_blank(),
+          panel.grid.minor.y = element_blank())
+}
+
+intro_qs <- with_alldvs_graph_nums %>%
+  filter(grepl('question', dv) |
+         grepl('method', dv) |
+         dv == 'diff_aligned' | 
+         dv == 'diff_will_learn' | 
+         dv == 'diff_intro_importance') %>%
+  mutate(dv = case_when(dv == 'diff_aligned' ~ 'Alignment between question and methodology',
+                      dv == 'diff_will_learn' ~ 'How much will be learned',
+                      dv == 'diff_intro_importance' ~ 'Importance of research regardless of outcome',
+                      dv == 'diff_method_rigor' ~ 'Methodological rigor',
+                      dv == 'diff_method_quality' ~ 'Quality of methodology',
+                      dv == 'diff_question_quality' ~ 'Quality of research question',
+                      dv == 'diff_method_creative' ~ 'Creativity of methodology',
+                      dv == 'diff_question_novel' ~ 'Novelty of research question')) %>%
+  main_graph_creation() +
+  scale_fill_manual(values = c("#fbb4ae", "gray80")) +
+  scale_y_discrete(labels = function(x) str_wrap(str_replace_all(x, "foo" , " "),
+                                                 width = 24)) +
+  theme(axis.text.x = element_blank(),
+        axis.ticks.x = element_blank()) +
+  ggtitle('Evaluation before knowing study outcomes') +
+  theme(plot.title = element_text(face = 'bold'))
+
+
+results_qs <- with_alldvs_graph_nums %>%
+                filter(grepl('result', dv) |
+                         dv == "diff_analysis_rigor" |
+                         dv == "diff_overall_import" |
+                         dv == "diff_did_learn" |
+                         dv == "diff_discussion_quality" |
+                         dv == "diff_justificed") %>%
+  mutate(dv = case_when(dv == 'diff_analysis_rigor' ~ 'Analysis rigor',
+                        dv == 'diff_overall_import' ~ 'Importance of finding',
+                        dv == 'diff_justificed' ~ 'Justifiability of conclusions',
+                        dv == 'diff_result_quality' ~ 'Quality of results',
+                        dv == 'diff_discussion_quality' ~ 'Qualtiy of discussion',
+                        dv == 'diff_did_learn' ~ 'How much was learned',
+                        dv == 'diff_result_innovative' ~ 'Innovativeness of results')) %>%
+  main_graph_creation() +
+  scale_fill_manual(values = c("#b3cde3", "gray80")) +
+  scale_y_discrete(labels = function(x) str_wrap(str_replace_all(x, "foo" , " "),
+                                                 width = 24)) +
+  theme(axis.text.x = element_blank(),
+        axis.ticks.x = element_blank()) +
+  ggtitle('Evaluation after knowing study outcomes') +
+  theme(plot.title = element_text(face = 'bold'))
+
+
+abstract_qs <- with_alldvs_graph_nums %>%
+                  filter(dv == 'diff_inspire' |
+                           dv == 'diff_abstract_aligned' |
+                           dv == 'diff_field_importance' |
+                           dv == "diff_overall_quality") %>%
+  mutate(dv = case_when(dv == 'diff_overall_quality' ~ 'Overall quality of paper',
+                        dv == 'diff_field_importance' ~ 'Importance of discoveries',
+                        dv == 'diff_abstract_aligned' ~ 'Alignment of abstract with findings',
+                        dv == 'diff_inspire' ~ 'How much new research will be inspired')) %>%
+                main_graph_creation() +
+  scale_fill_manual(values = c("#ccebc5", "gray80"))+
+  scale_y_discrete(labels = function(x) str_wrap(str_replace_all(x, "foo" , " "),
+                                                 width = 24)) +
+  ggtitle('Evaluation after finishing the paper') +
+  theme(plot.title = element_text(face = 'bold'))
+
+
+combined_plot <- intro_qs / results_qs / abstract_qs + plot_layout(heights = c(8, 7, 4))
+combined_plot
+
+within_alldvs %>%
+  spread_draws(b_Intercept, r_questions[dv,]) %>%
+  mutate(dv_estimates = b_Intercept + r_questions) %>%
+  left_join(within_alldvs %>%
+              spread_draws(b_Intercept, r_questions[dv,]) %>% 
+              median_qi(dv_median = b_Intercept + r_questions) %>% 
+              select(dv, dv_median), by = 'dv') %>%
+  ungroup() %>%
+  mutate(article_section = case_when(dv == 'diff_inspire' |
+                                       dv == 'diff_abstract_aligned' |
+                                       dv == 'diff_field_importance' |
+                                       dv == "diff_overall_quality" ~ 'Abstract',
+                                     grepl('result', dv) |
+                                       dv == "diff_analysis_rigor" |
+                                       dv == "diff_overall_import" |
+                                       dv == "diff_did_learn" |
+                                       dv == "diff_discussion_quality" |
+                                       dv == "diff_justificed" ~ 'Results/Discussion',
+                                     grepl('question', dv) |
+                                       grepl('method', dv) |
+                                       dv == 'diff_aligned' | 
+                                       dv == 'diff_will_learn' | 
+                                       dv == 'diff_intro_importance' ~ 'Intro/Methods')) %>%
+  mutate(dv = as.factor(dv),
+         dv = fct_reorder(dv, dv_median),
+         article_section = as.factor(article_section),
+         article_section = fct_relevel(article_section, c('Intro/Methods', 'Results/Discussion', 'Abstract'))) %>%
+  ggplot(aes(y = dv, x = dv_estimates, fill = stat(x <= 0))) +
+  stat_halfeye(.width = c(.95, .8)) +
+  scale_x_continuous(breaks=seq(-.5,2,.5)) +
+  facet_wrap(~ article_section, ncol = 1, scales = "free_y") +
+  geom_vline(xintercept = 0, linetype = "dashed") +
+  scale_fill_manual(values = c("skyblue", "gray80")) +
+  theme(legend.position = "none",
+        panel.background = element_rect(fill = "white", colour = "grey50"),
+        axis.title = element_blank())
+
+within_alldvs %>%
+  spread_draws(b_Intercept, r_questions[dv,]) %>%
+  mutate(dv_estimates = b_Intercept + r_questions) %>%
+  left_join(within_alldvs %>%
+              spread_draws(b_Intercept, r_questions[dv,]) %>% 
+              median_qi(dv_median = b_Intercept + r_questions) %>% 
+              select(dv, dv_median), by = 'dv') %>%
+  ungroup() %>%
+  mutate(article_section = case_when(dv == 'diff_inspire' |
+                                       dv == 'diff_abstract_aligned' |
+                                       dv == 'diff_field_importance' |
+                                       dv == "diff_overall_quality" ~ 'After finishing the paper',
+                                     grepl('result', dv) |
+                                       dv == "diff_analysis_rigor" |
+                                       dv == "diff_overall_import" |
+                                       dv == "diff_did_learn" |
+                                       dv == "diff_discussion_quality" |
+                                       dv == "diff_justificed" ~ 'After knowing study outcomes',
+                                     grepl('question', dv) |
+                                       grepl('method', dv) |
+                                       dv == 'diff_aligned' | 
+                                       dv == 'diff_will_learn' | 
+                                       dv == 'diff_intro_importance' ~ 'Before knowing study outcomes')) %>%
+  mutate(dv = as.factor(dv),
+         dv = fct_reorder(dv, dv_median),
+         article_section = as.factor(article_section),
+         article_section = fct_relevel(article_section, c('Before knowing study outcomes', 'After knowing study outcomes', 'After finishing the paper'))) %>%
+  ggplot(aes(y = dv, x = dv_estimates, fill = stat(x <= 0))) +
+  stat_halfeye(.width = c(.95, .8)) +
+  scale_x_continuous(breaks=seq(-.5,2,.5)) +
+  facet_grid(rows = vars(article_section), scales = "free_y", space = 'free_y', switch = "y") +
+  geom_vline(xintercept = 0, linetype = "dashed") +
+  scale_fill_manual(values = c("skyblue", "gray80")) +
+  theme_minimal() +
+  theme(legend.position = "none",
+        axis.title = element_blank(),
+        strip.text.y = element_text(angle = 270, face = "bold"),
+        strip.placement = "outside",
+        axis.title.x = element_text(margin = margin(t = 0.5, b = 0.5, unit = "cm")),
+        axis.title.y = element_blank(),
+        axis.text = element_text(size = 10),
+        panel.grid.major.y = element_blank(),
+        panel.grid.minor.y = element_blank())
+  
 
 ### compare model estimates from hierarchical and non-hierarchical DV models
 rbind(within_models %>% 
