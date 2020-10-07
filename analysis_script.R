@@ -756,14 +756,14 @@ intro_qs <- with_alldvs_graph_nums %>%
          dv == 'diff_aligned' | 
          dv == 'diff_will_learn' | 
          dv == 'diff_intro_importance') %>%
-  mutate(dv = case_when(dv == 'diff_aligned' ~ 'Alignment between question and methodology',
-                      dv == 'diff_will_learn' ~ 'How much will be learned',
-                      dv == 'diff_intro_importance' ~ 'Importance of research regardless of outcome',
-                      dv == 'diff_method_rigor' ~ 'Methodological rigor',
-                      dv == 'diff_method_quality' ~ 'Quality of methodology',
-                      dv == 'diff_question_quality' ~ 'Quality of research question',
-                      dv == 'diff_method_creative' ~ 'Creativity of methodology',
-                      dv == 'diff_question_novel' ~ 'Novelty of research question')) %>%
+  mutate(dv = case_when(dv == 'diff_aligned' ~ 'Question & methods aligned',
+                      dv == 'diff_will_learn' ~ 'Amount will learn',
+                      dv == 'diff_intro_importance' ~ 'Important research',
+                      dv == 'diff_method_rigor' ~ 'Methods rigor',
+                      dv == 'diff_method_quality' ~ 'Quality of methods',
+                      dv == 'diff_question_quality' ~ 'Quality of question',
+                      dv == 'diff_method_creative' ~ 'Creativity of methods',
+                      dv == 'diff_question_novel' ~ 'Novelty of question')) %>%
   main_graph_creation() +
   scale_fill_manual(values = c("#fbb4ae", "gray80")) +
   scale_y_discrete(labels = function(x) str_wrap(str_replace_all(x, "foo" , " "),
@@ -782,12 +782,12 @@ results_qs <- with_alldvs_graph_nums %>%
                          dv == "diff_discussion_quality" |
                          dv == "diff_justificed") %>%
   mutate(dv = case_when(dv == 'diff_analysis_rigor' ~ 'Analysis rigor',
-                        dv == 'diff_overall_import' ~ 'Importance of finding',
-                        dv == 'diff_justificed' ~ 'Justifiability of conclusions',
+                        dv == 'diff_overall_import' ~ 'Important findings',
+                        dv == 'diff_justificed' ~ 'Conclusions justified',
                         dv == 'diff_result_quality' ~ 'Quality of results',
                         dv == 'diff_discussion_quality' ~ 'Qualtiy of discussion',
-                        dv == 'diff_did_learn' ~ 'How much was learned',
-                        dv == 'diff_result_innovative' ~ 'Innovativeness of results')) %>%
+                        dv == 'diff_did_learn' ~ 'Amount learned',
+                        dv == 'diff_result_innovative' ~ 'Innovative results')) %>%
   main_graph_creation() +
   scale_fill_manual(values = c("#b3cde3", "gray80")) +
   scale_y_discrete(labels = function(x) str_wrap(str_replace_all(x, "foo" , " "),
@@ -804,9 +804,9 @@ abstract_qs <- with_alldvs_graph_nums %>%
                            dv == 'diff_field_importance' |
                            dv == "diff_overall_quality") %>%
   mutate(dv = case_when(dv == 'diff_overall_quality' ~ 'Overall quality of paper',
-                        dv == 'diff_field_importance' ~ 'Importance of discoveries',
-                        dv == 'diff_abstract_aligned' ~ 'Alignment of abstract with findings',
-                        dv == 'diff_inspire' ~ 'How much new research will be inspired')) %>%
+                        dv == 'diff_field_importance' ~ 'Important discoveries',
+                        dv == 'diff_abstract_aligned' ~ 'Abstract & findings aligned',
+                        dv == 'diff_inspire' ~ 'Inspire new research')) %>%
                 main_graph_creation() +
   scale_fill_manual(values = c("#ccebc5", "gray80"))+
   scale_y_discrete(labels = function(x) str_wrap(str_replace_all(x, "foo" , " "),
