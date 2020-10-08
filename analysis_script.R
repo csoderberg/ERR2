@@ -719,6 +719,12 @@ pp_check(within_alldvs)
 WAIC(within_alldvs)
 loo(within_alldvs)
 
+# table of point estimates & CrI by DV
+within_alldvs %>%
+  spread_draws(b_Intercept, r_questions[dv,]) %>% 
+  mean_qi(dv_mean = b_Intercept + r_questions) %>%
+  mutate_if(is.numeric, round, 2)
+
 # main figure
 with_alldvs_graph_nums <- within_alldvs %>%
   spread_draws(b_Intercept, r_questions[dv,]) %>%
