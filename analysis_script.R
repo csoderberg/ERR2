@@ -732,11 +732,11 @@ with_alldvs_graph_nums <- within_alldvs %>%
 main_graph_creation <- function(data) {
   data %>%  
     mutate(dv = as.factor(dv),
-           dv = fct_reorder(dv, dv_median)) %>%
+           dv = fct_reorder(dv, dv_mean)) %>%
     ggplot(aes(y = dv, x = dv_estimates, fill = stat(x <= 0))) +
     stat_halfeye(point_interval = mean_qi, .width = c(.95, .8)) +
     scale_x_continuous(breaks=seq(-.5, 1.5, .5),
-                       limits = c(-.75, 1.75),
+                       limits = c(-.75, 1.8),
                        name = 'Difference between RR and non-RR articles') +
     geom_vline(xintercept = 0, linetype = "dashed") +
     theme_minimal() +
