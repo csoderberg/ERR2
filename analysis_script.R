@@ -85,8 +85,10 @@ long_data %>%
 
 
 # bayesian models for single DV
-priors <- c(set_prior("normal(0,2)", "b"),
-            set_prior("normal(0, 2.5)", "sd"))
+priors <- c(set_prior("normal(0,2", "Intercept"),
+            set_prior("normal(0,2)", "b"),
+            set_prior("normal(0, 2.5)", "sd"),
+            set_prior("normal(0, 2)", "sigma"))
 
 
 
@@ -708,20 +710,14 @@ within_alldvs <-  brm(response ~ Field + keyword_batch_comp +
                           prior = priors,
                           family = 'gaussian',
                           chains = 4,
-                          iter = 3000,
+                          iter = 4000,
+                          seed = 25,
                           control = list(adapt_delta = 0.95, max_treedepth = 15))
 
 summary(within_alldvs)
 pp_check(within_alldvs)
 WAIC(within_alldvs)
 loo(within_alldvs)
-
-within_alldvs %>%
-  spread_draws(b_Intercept, r_questions[dv,]) %>%
-  median_qi(question_mean = b_Intercept + r_questions, .width = c(.95, .90)) %>%
-  ggplot(aes(y = dv, x = question_mean, xmin = .lower, xmax = .upper)) +
-  geom_pointinterval()
-
 
 # main figure
 with_alldvs_graph_nums <- within_alldvs %>%
@@ -733,12 +729,21 @@ with_alldvs_graph_nums <- within_alldvs %>%
          select(dv, dv_median), by = 'dv') %>%
   ungroup()
 
+within_alldvs_crossrandom_graph_nums <- within_alldvs_crossrandom %>%
+  spread_draws(b_Intercept, r_questions[dv,]) %>%
+  mutate(dv_estimates = b_Intercept + r_questions) %>%
+  left_join(within_alldvs %>%
+              spread_draws(b_Intercept, r_questions[dv,]) %>% 
+              mean_qi(dv_mean = b_Intercept + r_questions) %>% 
+              select(dv, dv_mean), by = 'dv') %>%
+  ungroup()
+
 main_graph_creation <- function(data) {
   data %>%  
     mutate(dv = as.factor(dv),
            dv = fct_reorder(dv, dv_median)) %>%
     ggplot(aes(y = dv, x = dv_estimates, fill = stat(x <= 0))) +
-    stat_halfeye(.width = c(.95, .8)) +
+    stat_halfeye(point_interval = mean_qi, .width = c(.95, .8)) +
     scale_x_continuous(breaks=seq(-.5, 1.5, .5),
                        limits = c(-.75, 1.75),
                        name = 'Difference between RR and non-RR articles') +
@@ -752,7 +757,7 @@ main_graph_creation <- function(data) {
           panel.grid.minor.y = element_blank())
 }
 
-intro_qs <- with_alldvs_graph_nums %>%
+intro_qs <- within_alldvs_crossrandom_graph_nums %>%
   filter(grepl('question', dv) |
          grepl('method', dv) |
          dv == 'diff_aligned' | 
@@ -775,7 +780,7 @@ intro_qs <- with_alldvs_graph_nums %>%
   theme(plot.title = element_text(face = 'bold', size = 18))
 
 
-results_qs <- with_alldvs_graph_nums %>%
+results_qs <- within_alldvs_crossrandom_graph_nums %>%
                 filter(grepl('result', dv) |
                          dv == "diff_analysis_rigor" |
                          dv == "diff_overall_import" |
@@ -798,7 +803,7 @@ results_qs <- with_alldvs_graph_nums %>%
   theme(plot.title = element_text(face = 'bold', size = 18))
 
 
-abstract_qs <- with_alldvs_graph_nums %>%
+abstract_qs <- within_alldvs_crossrandom_graph_nums %>%
                   filter(dv == 'diff_inspire' |
                            dv == 'diff_abstract_aligned' |
                            dv == 'diff_field_importance' |
