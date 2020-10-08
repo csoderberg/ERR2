@@ -725,17 +725,8 @@ with_alldvs_graph_nums <- within_alldvs %>%
   mutate(dv_estimates = b_Intercept + r_questions) %>%
   left_join(within_alldvs %>%
          spread_draws(b_Intercept, r_questions[dv,]) %>% 
-         median_qi(dv_median = b_Intercept + r_questions) %>% 
-         select(dv, dv_median), by = 'dv') %>%
-  ungroup()
-
-within_alldvs_crossrandom_graph_nums <- within_alldvs_crossrandom %>%
-  spread_draws(b_Intercept, r_questions[dv,]) %>%
-  mutate(dv_estimates = b_Intercept + r_questions) %>%
-  left_join(within_alldvs %>%
-              spread_draws(b_Intercept, r_questions[dv,]) %>% 
-              mean_qi(dv_mean = b_Intercept + r_questions) %>% 
-              select(dv, dv_mean), by = 'dv') %>%
+         mean_qi(dv_mean = b_Intercept + r_questions) %>% 
+         select(dv, dv_mean), by = 'dv') %>%
   ungroup()
 
 main_graph_creation <- function(data) {
@@ -757,7 +748,7 @@ main_graph_creation <- function(data) {
           panel.grid.minor.y = element_blank())
 }
 
-intro_qs <- within_alldvs_crossrandom_graph_nums %>%
+intro_qs <- with_alldvs_graph_nums %>%
   filter(grepl('question', dv) |
          grepl('method', dv) |
          dv == 'diff_aligned' | 
@@ -780,7 +771,7 @@ intro_qs <- within_alldvs_crossrandom_graph_nums %>%
   theme(plot.title = element_text(face = 'bold', size = 18))
 
 
-results_qs <- within_alldvs_crossrandom_graph_nums %>%
+results_qs <- with_alldvs_graph_nums %>%
                 filter(grepl('result', dv) |
                          dv == "diff_analysis_rigor" |
                          dv == "diff_overall_import" |
@@ -803,7 +794,7 @@ results_qs <- within_alldvs_crossrandom_graph_nums %>%
   theme(plot.title = element_text(face = 'bold', size = 18))
 
 
-abstract_qs <- within_alldvs_crossrandom_graph_nums %>%
+abstract_qs <- with_alldvs_graph_nums %>%
                   filter(dv == 'diff_inspire' |
                            dv == 'diff_abstract_aligned' |
                            dv == 'diff_field_importance' |
