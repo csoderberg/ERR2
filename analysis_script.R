@@ -823,92 +823,6 @@ combined_plot <- intro_qs / results_qs / abstract_qs + plot_layout(heights = c(8
 combined_plot
 
 
-
-scale_y_discrete(labels = function(x) str_wrap(str_replace_all(x, "foo" , " "),
-                                               width = 24)) +
-
-within_alldvs %>%
-  spread_draws(b_Intercept, r_questions[dv,]) %>%
-  mutate(dv_estimates = b_Intercept + r_questions) %>%
-  left_join(within_alldvs %>%
-              spread_draws(b_Intercept, r_questions[dv,]) %>% 
-              median_qi(dv_median = b_Intercept + r_questions) %>% 
-              select(dv, dv_median), by = 'dv') %>%
-  ungroup() %>%
-  mutate(article_section = case_when(dv == 'diff_inspire' |
-                                       dv == 'diff_abstract_aligned' |
-                                       dv == 'diff_field_importance' |
-                                       dv == "diff_overall_quality" ~ 'Abstract',
-                                     grepl('result', dv) |
-                                       dv == "diff_analysis_rigor" |
-                                       dv == "diff_overall_import" |
-                                       dv == "diff_did_learn" |
-                                       dv == "diff_discussion_quality" |
-                                       dv == "diff_justificed" ~ 'Results/Discussion',
-                                     grepl('question', dv) |
-                                       grepl('method', dv) |
-                                       dv == 'diff_aligned' | 
-                                       dv == 'diff_will_learn' | 
-                                       dv == 'diff_intro_importance' ~ 'Intro/Methods')) %>%
-  mutate(dv = as.factor(dv),
-         dv = fct_reorder(dv, dv_median),
-         article_section = as.factor(article_section),
-         article_section = fct_relevel(article_section, c('Intro/Methods', 'Results/Discussion', 'Abstract'))) %>%
-  ggplot(aes(y = dv, x = dv_estimates, fill = stat(x <= 0))) +
-  stat_halfeye(.width = c(.95, .8)) +
-  scale_x_continuous(breaks=seq(-.5,2,.5)) +
-  facet_wrap(~ article_section, ncol = 1, scales = "free_y") +
-  geom_vline(xintercept = 0, linetype = "dashed") +
-  scale_fill_manual(values = c("skyblue", "gray80")) +
-  theme(legend.position = "none",
-        panel.background = element_rect(fill = "white", colour = "grey50"),
-        axis.title = element_blank())
-
-within_alldvs %>%
-  spread_draws(b_Intercept, r_questions[dv,]) %>%
-  mutate(dv_estimates = b_Intercept + r_questions) %>%
-  left_join(within_alldvs %>%
-              spread_draws(b_Intercept, r_questions[dv,]) %>% 
-              median_qi(dv_median = b_Intercept + r_questions) %>% 
-              select(dv, dv_median), by = 'dv') %>%
-  ungroup() %>%
-  mutate(article_section = case_when(dv == 'diff_inspire' |
-                                       dv == 'diff_abstract_aligned' |
-                                       dv == 'diff_field_importance' |
-                                       dv == "diff_overall_quality" ~ 'After finishing the paper',
-                                     grepl('result', dv) |
-                                       dv == "diff_analysis_rigor" |
-                                       dv == "diff_overall_import" |
-                                       dv == "diff_did_learn" |
-                                       dv == "diff_discussion_quality" |
-                                       dv == "diff_justificed" ~ 'After knowing study outcomes',
-                                     grepl('question', dv) |
-                                       grepl('method', dv) |
-                                       dv == 'diff_aligned' | 
-                                       dv == 'diff_will_learn' | 
-                                       dv == 'diff_intro_importance' ~ 'Before knowing study outcomes')) %>%
-  mutate(dv = as.factor(dv),
-         dv = fct_reorder(dv, dv_median),
-         article_section = as.factor(article_section),
-         article_section = fct_relevel(article_section, c('Before knowing study outcomes', 'After knowing study outcomes', 'After finishing the paper'))) %>%
-  ggplot(aes(y = dv, x = dv_estimates, fill = stat(x <= 0))) +
-  stat_halfeye(.width = c(.95, .8)) +
-  scale_x_continuous(breaks=seq(-.5,2,.5)) +
-  facet_grid(rows = vars(article_section), scales = "free_y", space = 'free_y', switch = "y") +
-  geom_vline(xintercept = 0, linetype = "dashed") +
-  scale_fill_manual(values = c("skyblue", "gray80")) +
-  theme_minimal() +
-  theme(legend.position = "none",
-        axis.title = element_blank(),
-        strip.text.y = element_text(angle = 270, face = "bold"),
-        strip.placement = "outside",
-        axis.title.x = element_text(margin = margin(t = 0.5, b = 0.5, unit = "cm")),
-        axis.title.y = element_blank(),
-        axis.text = element_text(size = 10),
-        panel.grid.major.y = element_blank(),
-        panel.grid.minor.y = element_blank())
-  
-
 ### compare model estimates from hierarchical and non-hierarchical DV models
 rbind(within_models %>% 
   mutate(draws = map(within_pooled_model_results, spread_draws, b_Intercept),
@@ -945,6 +859,12 @@ summary(within_alldvs_improve)
 pp_check(within_alldvs_improve)
 WAIC(within_alldvs_improve)
 loo(within_alldvs_improve)
+
+# parameters by improvement level
+within_alldvs_improve %>%
+  spread_draws(b_Intercept, r_improve_6L[improve_level,]) %>%
+  mean_qi(cond_mean = b_Intercept + r_improve_6L, .width = c(.95)) %>%
+  mutate_if(is.numeric, round, 2)
 
 within_alldvs_improve %>%
   spread_draws(b_Intercept, r_improve_6L[improve_level,], r_questions[DV,]) %>%
