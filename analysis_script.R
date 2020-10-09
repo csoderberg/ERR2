@@ -728,7 +728,7 @@ within_alldvs %>%
   mean_qi(dv_mean = b_Intercept + r_questions) %>%
   mutate_if(is.numeric, round, 2)
 
-# main figure
+# main figure for RR vs. non-RR difference across DVs with partial pooling
 with_alldvs_graph_nums <- within_alldvs %>%
   spread_draws(b_Intercept, r_questions[dv,]) %>%
   mutate(dv_estimates = b_Intercept + r_questions) %>%
@@ -738,6 +738,7 @@ with_alldvs_graph_nums <- within_alldvs %>%
          select(dv, dv_mean), by = 'dv') %>%
   ungroup()
 
+## setup function to create base graph for each section
 main_graph_creation <- function(data) {
   data %>%  
     mutate(dv = as.factor(dv),
@@ -757,6 +758,7 @@ main_graph_creation <- function(data) {
           panel.grid.minor.y = element_blank())
 }
 
+## graph for intro questions
 intro_qs <- with_alldvs_graph_nums %>%
   filter(grepl('question', dv) |
          grepl('method', dv) |
@@ -779,7 +781,7 @@ intro_qs <- with_alldvs_graph_nums %>%
   ggtitle('Evaluation before knowing study outcomes') +
   theme(plot.title = element_text(face = 'bold', size = 18))
 
-
+## graph for results questions
 results_qs <- with_alldvs_graph_nums %>%
                 filter(grepl('result', dv) |
                          dv == "diff_analysis_rigor" |
@@ -802,7 +804,7 @@ results_qs <- with_alldvs_graph_nums %>%
   ggtitle('Evaluation after knowing study outcomes') +
   theme(plot.title = element_text(face = 'bold', size = 18))
 
-
+## graph fo abstract questions
 abstract_qs <- with_alldvs_graph_nums %>%
                   filter(dv == 'diff_inspire' |
                            dv == 'diff_abstract_aligned' |
@@ -818,7 +820,7 @@ abstract_qs <- with_alldvs_graph_nums %>%
   theme(plot.title = element_text(face = 'bold', size = 18),
         axis.title.x = element_text(hjust = .15, vjust = 0))
 
-
+## combine graphs
 combined_plot <- intro_qs / results_qs / abstract_qs + plot_layout(heights = c(8, 7, 4))
 combined_plot
 
