@@ -269,20 +269,23 @@ for_descriptive <- wide_data %>%
 
 
 ## Overall descriptives
+
+#### means & sds for Familiarity and Rigor questions
 for_descriptive %>%
-  select(-c(Field, SPSubfield, Keyword, Gender, Education, ProfTitle, BelieveFirstRR, BelieveSecondRR, RR, Order, Match, EverRR, EverPrereg), -starts_with('First'), -starts_with('Second')) %>%
-  skim_to_wide() %>%
-  mutate(missing = as.numeric(missing),
-         complete = as.numeric(complete),
-         n = as.numeric(n),
-         mean = as.numeric(mean),
-         sd = as.numeric(mean),
-         p0 = as.numeric(p0),
-         p25 = as.numeric(p25),
-         p50 = as.numeric(p50),
-         p75 = as.numeric(p75),
-         p100 = as.numeric(p100)) %>%
-  gt()
+  select(RRFamiliar, PreregFamiliar, BelieveRigor, BelieveQuality) %>%
+  summarise(across(everything(), list(mean = mean, sd = sd)))
+
+#### cor for rigor and quality beliefs
+cor(for_descriptive$BelieveRigor, for_descriptive$BelieveQuality)
+
+### every RR or Pre-reg tallys
+for_descriptive %>%
+  group_by(EverRR) %>%
+  tally()
+
+for_descriptive %>%
+  group_by(EverPrereg) %>%
+  tally()
 
 for_descriptive %>%
   select(RRFamiliar) %>%
@@ -935,6 +938,7 @@ within_alldvs_improve <-  brm(response ~ Field + keyword_batch_comp +
                       family = 'gaussian',
                       chains = 4,
                       iter = 3000,
+                      seed = 28,
                       control = list(adapt_delta = 0.99, max_treedepth = 15))
 
 summary(within_alldvs_improve)
@@ -974,13 +978,20 @@ within_alldvs_familiar <-  brm(response ~ Field + keyword_batch_comp +
                               prior = priors,
                               family = 'gaussian',
                               chains = 4,
-                              iter = 3000,
-                              control = list(adapt_delta = 0.99, max_treedepth = 15))
+                              iter = 4000,
+                              seed = 27,
+                              control = list(adapt_delta = .99, max_treedepth = 15))
 
 summary(within_alldvs_familiar)
 pp_check(within_alldvs_familiar)
 WAIC(within_alldvs_familiar)
 loo(within_alldvs_familiar)
+
+# get table of estimates for familiarity levels across all DVs
+within_alldvs_familiar %>%
+  spread_draws(b_Intercept,r_familiar_5L[familiar_level,]) %>%
+  mean_qi(fam_level_mean = b_Intercept + r_familiar_5L, .width = c(.95)) %>%
+  mutate_if(is.numeric, round, 2)
 
 within_alldvs_familiar %>%
   spread_draws(b_Intercept, r_familiar_5L[familiar_level,], r_questions[DV,]) %>%
