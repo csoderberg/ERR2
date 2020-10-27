@@ -841,17 +841,6 @@ within_alldvs_familiar %>%
   mean_qi(fam_level_mean = b_Intercept + r_familiar_5L, .width = c(.95)) %>%
   mutate_if(is.numeric, round, 2)
 
-within_alldvs_familiar %>%
-  spread_draws(b_Intercept, r_familiar_5L[familiar_level,], r_questions[DV,]) %>%
-  median_qi(cond_mean = b_Intercept + r_familiar_5L + r_questions, .width = c(.95, .90)) %>%
-  ungroup() %>%
-  mutate(familiar_level = as.factor(familiar_level),
-         familiar_level = fct_relevel(familiar_level, c('1', '2', '3', '4', '5'))) %>%
-  ggplot(aes(y = DV, x = cond_mean, xmin = .lower, xmax = .upper, color = familiar_level)) +
-  geom_pointinterval(position=position_dodge(width=1)) +
-  geom_vline(xintercept = 0) +
-  theme_classic()
-
 ### graph collapsed across DVs
 within_alldvs_familiar %>%
   spread_draws(b_Intercept, r_familiar_5L[familiar_level,]) %>%
@@ -1045,6 +1034,54 @@ gtsave(within_familiar_model_table, 'within_familiar_model_table.rtf')
 
 pp_check(within_alldvs_familiar)
 loo(within_alldvs_familiar)
+
+# graph of familiarity by DV
+
+familiarity_by_dv_graph <- within_alldvs_familiar %>%
+  spread_draws(b_Intercept, r_familiar_5L[familiar_level,], r_questions[DV,]) %>%
+  median_qi(cond_mean = b_Intercept + r_familiar_5L + r_questions, .width = c(.95, .80)) %>%
+  ungroup() %>%
+  mutate(familiar_level = as.factor(familiar_level),
+         familiar_level = fct_relevel(familiar_level, c('1', '2', '3', '4', '5')),
+         familiar_level = fct_recode(familiar_level, `Not familiar` = '1',
+                                     `Slightly familiar` = '2',
+                                     `Moderately familiar` = '3',
+                                     `Very familiar` = '4',
+                                     `Substantially familiar` = '5')) %>%
+  mutate(DV = case_when(DV == 'diff_abstract_aligned' ~ 'Abstract Aligned',
+                        DV == 'diff_aligned' ~ 'Methods Aligned',
+                        DV == 'diff_analysis_rigor' ~ 'Analysis Rigor',
+                        DV == 'diff_did_learn' ~ 'Amt Learned',
+                        DV == 'diff_discussion_quality' ~ 'Disc Quality',
+                        DV == 'diff_field_importance' ~ 'Impt Discovery',
+                        DV == 'diff_inspire' ~ 'Inspire Research',
+                        DV == 'diff_intro_importance' ~ 'Impt Research',
+                        DV == 'diff_method_rigor' ~ 'Methdos Rigor',
+                        DV == 'diff_will_learn' ~ 'Amt will Learn',
+                        DV == 'diff_method_quality' ~ 'Methdos Quality',
+                        DV == 'diff_question_quality' ~ 'Quest Quality',
+                        DV == 'diff_question_novel' ~ 'Quest Novelty',
+                        DV == 'diff_method_creative' ~ 'Creative Methods',
+                        DV == 'diff_overall_quality' ~ 'Overall Quality',
+                        DV == 'diff_overall_import' ~ 'Impt Findings',
+                        DV == 'diff_justificed' ~ 'Conclusion Justified',
+                        DV == 'diff_result_quality' ~ 'Qualt Results',
+                        DV == 'diff_result_innovative' ~ 'Innovative Result')) %>%
+  ggplot(aes(y = familiar_level, x = cond_mean, xmin = .lower, xmax = .upper)) +
+  geom_pointinterval(position=position_dodge(width=1)) +
+  geom_vline(xintercept = 0) +
+  facet_wrap(~ DV) +
+  scale_x_continuous(breaks=seq(-1, 2, 1),
+                     limits = c(-1, 2),
+                     name = 'Difference between RR and non-RR articles') +
+  theme_minimal() +
+  theme(axis.title.y = element_blank(),
+        axis.title.x = element_text(size = 10),
+        axis.text = element_text(size = 10),
+        panel.grid.minor.y = element_blank(),
+        strip.text = element_text(size=10))
+
+familiarity_by_dv_graph
 
 #### Model fit and summary for exploratory analysis of improve variable
 within_improve_model_results <- summary(within_alldvs_improve)
