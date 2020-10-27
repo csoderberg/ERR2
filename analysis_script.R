@@ -989,20 +989,41 @@ within_alldvs_model_table <- rbind(within_alldvs_model_results$fixed %>%
   )
 
 gtsave(within_alldvs_model_table, 'within_alldvs_model_table.rtf')  
-  
-  
-
-# model fit information
-pp_check(within_alldvs)
-WAIC(within_alldvs)
-loo(within_alldvs)
 
 # table of point estimates & CrI by DV
-within_alldvs %>%
+within_alldvs_dv_posteriors <- within_alldvs %>%
   spread_draws(b_Intercept, r_questions[dv,]) %>% 
   mean_qi(dv_mean = b_Intercept + r_questions) %>%
-  mutate_if(is.numeric, round, 2)
+  mutate_if(is.numeric, round, 2) %>%
+  select(dv, dv_mean, .lower, .upper) %>%
+  gt() %>%
+  cols_merge(columns = vars(.lower, .upper),
+             hide_columns = vars(.upper),
+             pattern = "[{1}, {2}]") %>%
+  cols_label(dv = 'DV',
+             dv_mean = 'Posterior Mean',
+             .lower = '95% CrI') %>%
+  cols_align(align = 'center',
+             columns = 2:3) %>%
+  cols_align(align = 'left',
+             columns = 1) %>%
+  tab_style(
+    style = cell_text(color = "black", weight = "bold"),
+    locations = list(
+      cells_column_labels(everything())
+    )
+  ) %>% 
+  tab_options(
+    table_body.hlines.color = "white",
+    table.border.top.color = "white",
+    table.border.top.width = px(3),
+    table.border.bottom.color = "white",
+    table.border.bottom.width = px(3),
+    column_labels.border.bottom.color = "black",
+    column_labels.border.bottom.width = px(2)
+  )
 
+gtsave(within_alldvs_dv_posteriors, 'within_alldvs_dv_posteriors.rtf')
 
 # exploration of guessing %>%
 wide_data %>%
