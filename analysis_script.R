@@ -1110,44 +1110,6 @@ within_improve_model_table <- rbind(within_improve_model_results$fixed %>%
   )
 
 gtsave(within_improve_model_table, 'within_improve_model_table.rtf')
-
-# table for improvement levels across all DVs
-improve_dvcollapsed_table <- within_alldvs_improve %>%
-  spread_draws(b_Intercept, r_improve_6L[improve_level,]) %>%
-  mean_qi(cond_mean = b_Intercept + r_improve_6L, .width = c(.95)) %>%
-  mutate_if(is.numeric, round, 2) %>%
-  mutate(improve_level = as.factor(improve_level),
-         improve_level = fct_relevel(improve_level, c('negative', 'neutral', 'slightly_more', 'moderately_more', 'much_more', 'substantially_more'))) %>%
-  arrange(improve_level) %>%
-  select(improve_level, cond_mean, .lower, .upper) %>%
-  gt() %>%
-  cols_merge(columns = vars(.lower, .upper),
-             hide_columns = vars(.upper),
-             pattern = "[{1}, {2}]") %>%
-  cols_label(improve_level = 'Improvement Level',
-             cond_mean = 'Posterior Mean',
-             .lower = '95% CrI') %>%
-  cols_align(align = 'center',
-             columns = 2:3) %>%
-  cols_align(align = 'left',
-             columns = 1) %>%
-  tab_style(
-    style = cell_text(color = "black", weight = "bold"),
-    locations = list(
-      cells_column_labels(everything())
-    )
-  ) %>% 
-  tab_options(
-    table_body.hlines.color = "white",
-    table.border.top.color = "white",
-    table.border.top.width = px(3),
-    table.border.bottom.color = "white",
-    table.border.bottom.width = px(3),
-    column_labels.border.bottom.color = "black",
-    column_labels.border.bottom.width = px(2)
-  )
-  
-gtsave(improve_dvcollapsed_table, 'improve_dvcollapsed_table.rtf') 
   
 # graph of improvement by DV
 improve_by_dv_graph <- within_alldvs_improve %>%
