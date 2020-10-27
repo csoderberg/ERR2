@@ -845,11 +845,6 @@ within_alldvs_familiar <-  brm(response ~ Field + keyword_batch_comp +
                               seed = 27,
                               control = list(adapt_delta = .99, max_treedepth = 15))
 
-summary(within_alldvs_familiar)
-pp_check(within_alldvs_familiar)
-WAIC(within_alldvs_familiar)
-loo(within_alldvs_familiar)
-
 # get table of estimates for familiarity levels across all DVs
 within_alldvs_familiar %>%
   spread_draws(b_Intercept,r_familiar_5L[familiar_level,]) %>%
@@ -990,6 +985,141 @@ within_alldvs_dv_posteriors <- within_alldvs %>%
   )
 
 gtsave(within_alldvs_dv_posteriors, 'within_alldvs_dv_posteriors.rtf')
+
+
+#### Model fit and summary statistics for exploratory model with familiarity
+
+within_familiar_model_results <- summary(within_alldvs_familiar) 
+
+within_familiar_model_table <- rbind(within_familiar_model_results$fixed %>%
+                                     as.data.frame() %>% 
+                                     rownames_to_column(var = "Predictor"), 
+                                     within_familiar_model_results$random$familiar_5L %>% 
+                                       as.data.frame() %>% 
+                                       rownames_to_column(var = "Predictor") %>% 
+                                       mutate(Predictor = 'sd(Intercept): Familiarity'),
+                                     within_familiar_model_results$random$participant_id %>% 
+                                     as.data.frame() %>% 
+                                     rownames_to_column(var = "Predictor") %>% 
+                                     mutate(Predictor = 'sd(Intercept): Participant_id'),
+                                     within_familiar_model_results$random$questions %>%
+                                     as.data.frame() %>% 
+                                     rownames_to_column(var = "Predictor") %>% 
+                                     mutate(Predictor = 'sd(Intercept): Question'),
+                                     within_familiar_model_results$random$RR %>%
+                                     as.data.frame() %>% 
+                                     rownames_to_column(var = "Predictor") %>% 
+                                     mutate(Predictor = 'sd(Intercept): RR'),
+                                     within_familiar_model_results$spec_pars %>%
+                                     as.data.frame() %>%
+                                     rownames_to_column(var = "Predictor")) %>%
+  mutate(effect_type = case_when(grepl('sd', Predictor) | grepl('sigma', Predictor) ~ 'Random Effects',
+                                 TRUE ~ 'Fixed Effects')) %>%
+  mutate_if(is.numeric, round, 2) %>%
+  select(-c(Bulk_ESS, Tail_ESS, Rhat)) %>%
+  rename(SE = 'Est.Error',
+         lower_ci = "l-95% CI",
+         upper_ci = "u-95% CI") %>%
+  gt(groupname_col = 'effect_type') %>%
+  tab_stubhead("label") %>% 
+  cols_merge(columns = vars(lower_ci,upper_ci),
+             hide_columns = vars(upper_ci),
+             pattern = "[{1}, {2}]") %>%
+  cols_label(lower_ci = '95% CrI',
+             Predictor = '') %>%
+  cols_align(align = 'center',
+             columns = 2:4) %>%
+  cols_align(align = 'left',
+             columns = 1) %>%
+  tab_style(
+    style = cell_text(color = "black", weight = "bold"),
+    locations = list(
+      cells_row_groups(),
+      cells_column_labels(everything())
+    )
+  ) %>% 
+  tab_options(
+    row_group.border.top.width = px(3),
+    row_group.border.top.color = "black",
+    row_group.border.bottom.color = "black",
+    table_body.hlines.color = "white",
+    table.border.top.color = "white",
+    table.border.top.width = px(3),
+    table.border.bottom.color = "white",
+    table.border.bottom.width = px(3),
+    column_labels.border.bottom.color = "black",
+    column_labels.border.bottom.width = px(2)
+  )
+
+gtsave(within_familiar_model_table, 'within_familiar_model_table.rtf')
+
+pp_check(within_alldvs_familiar)
+loo(within_alldvs_familiar)
+
+#### Model fit and summary for exploratory analysis of improve variable
+within_improve_model_results <- summary(within_alldvs_improve)
+
+within_improve_model_table <- rbind(within_improve_model_results$fixed %>%
+                                       as.data.frame() %>% 
+                                       rownames_to_column(var = "Predictor"), 
+                                     within_improve_model_results$random$improve_6L %>% 
+                                       as.data.frame() %>% 
+                                       rownames_to_column(var = "Predictor") %>% 
+                                       mutate(Predictor = 'sd(Intercept): Improve'),
+                                     within_improve_model_results$random$participant_id %>% 
+                                       as.data.frame() %>% 
+                                       rownames_to_column(var = "Predictor") %>% 
+                                       mutate(Predictor = 'sd(Intercept): Participant_id'),
+                                     within_improve_model_results$random$questions %>%
+                                       as.data.frame() %>% 
+                                       rownames_to_column(var = "Predictor") %>% 
+                                       mutate(Predictor = 'sd(Intercept): Question'),
+                                     within_improve_model_results$random$RR %>%
+                                       as.data.frame() %>% 
+                                       rownames_to_column(var = "Predictor") %>% 
+                                       mutate(Predictor = 'sd(Intercept): RR'),
+                                     within_improve_model_results$spec_pars %>%
+                                       as.data.frame() %>%
+                                       rownames_to_column(var = "Predictor")) %>%
+  mutate(effect_type = case_when(grepl('sd', Predictor) | grepl('sigma', Predictor) ~ 'Random Effects',
+                                 TRUE ~ 'Fixed Effects')) %>%
+  mutate_if(is.numeric, round, 2) %>%
+  select(-c(Bulk_ESS, Tail_ESS, Rhat)) %>%
+  rename(SE = 'Est.Error',
+         lower_ci = "l-95% CI",
+         upper_ci = "u-95% CI") %>%
+  gt(groupname_col = 'effect_type') %>%
+  tab_stubhead("label") %>% 
+  cols_merge(columns = vars(lower_ci,upper_ci),
+             hide_columns = vars(upper_ci),
+             pattern = "[{1}, {2}]") %>%
+  cols_label(lower_ci = '95% CrI',
+             Predictor = '') %>%
+  cols_align(align = 'center',
+             columns = 2:4) %>%
+  cols_align(align = 'left',
+             columns = 1) %>%
+  tab_style(
+    style = cell_text(color = "black", weight = "bold"),
+    locations = list(
+      cells_row_groups(),
+      cells_column_labels(everything())
+    )
+  ) %>% 
+  tab_options(
+    row_group.border.top.width = px(3),
+    row_group.border.top.color = "black",
+    row_group.border.bottom.color = "black",
+    table_body.hlines.color = "white",
+    table.border.top.color = "white",
+    table.border.top.width = px(3),
+    table.border.bottom.color = "white",
+    table.border.bottom.width = px(3),
+    column_labels.border.bottom.color = "black",
+    column_labels.border.bottom.width = px(2)
+  )
+
+gtsave(within_improve_model_table, 'within_improve_model_table.rtf')
 
 # exploration of guessing %>%
 wide_data %>%
