@@ -14,6 +14,7 @@ library(psych)
 library(patchwork)
 library(ggdist)
 library(gt)
+library(corrplot)
 
 # load data
 long_data <- read_csv(here::here('cleaned_numeric_data_long.csv'), col_types = cols(article_type = col_factor(),
@@ -650,49 +651,6 @@ rbind(diff_rigor_model_familiar %>%
   geom_vline(xintercept = 0) +
   theme_classic()
 
-### EFA of diff DVs to investigate potential exchangability
-
-#initial correlations
-wide_data %>%
-  select(starts_with('diff')) %>%
-  cor(use = "pairwise.complete.obs") %>%
-  corrplot(type = 'upper', order="hclust", method = 'number')
-
-wide_data %>%
-  select(participant_id, starts_with('diff')) %>%
-  column_to_rownames('participant_id') %>%
-  fa.parallel()
-
-wide_data %>%
-  select(participant_id, starts_with('diff')) %>%
-  select(-c(diff_abstract_aligned, diff_intro_importance, diff_question_novel)) %>%
-  column_to_rownames('participant_id') %>%
-  fa.parallel()
-
-efa3 <- wide_data %>%
-          select(participant_id, starts_with('diff')) %>%
-          column_to_rownames('participant_id') %>%
-          fa(nfactors = 3, rotate = 'oblimin') 
-efa3
-fa.diagram(efa3)
-
-efa3_cutdown <- wide_data %>%
-  select(participant_id, starts_with('diff')) %>%
-  select(-c(diff_abstract_aligned, diff_intro_importance, diff_question_novel)) %>%
-  column_to_rownames('participant_id') %>%
-  fa(nfactors = 3, rotate = 'oblimin') 
-
-efa2_cutdown <- wide_data %>%
-  select(participant_id, starts_with('diff')) %>%
-  select(-c(diff_abstract_aligned, diff_intro_importance, diff_question_novel)) %>%
-  column_to_rownames('participant_id') %>%
-  fa(nfactors = 2, rotate = 'oblimin') 
-
-efa3_cutdown
-efa2_cutdown
-fa.diagram(efa3_cutdown)
-fa.diagram(efa2_cutdown)
-
 ### within model with DVs as ML component
 mlm_dvs_data <- wide_data %>%
   select(starts_with('diff'), participant_id, RR, Field, keyword_batch_comp, Order, Match, improve_6L, familiar_5L, guessed_right) %>%
@@ -926,11 +884,19 @@ within_alldvs_familiar %>%
 
 #### Supplemental Analyses
 
+### Correlations between DVs
+png(height = 600, width = 600, file = 'dv_corrs.png')
+
+wide_data %>%
+  select(starts_with('diff')) %>%
+  cor(use = "pairwise.complete.obs") %>%
+  corrplot(type = 'upper', order="hclust", method = 'circle')
+dev.off() 
+
 ### Model fit and summary results from within-subjects ML pooled DV model
 
 # table of results
 within_alldvs_model_results <- summary(within_alldvs) 
-
 
 within_alldvs_model_table <- rbind(within_alldvs_model_results$fixed %>%
         as.data.frame() %>% 
