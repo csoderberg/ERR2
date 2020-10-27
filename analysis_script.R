@@ -809,16 +809,6 @@ within_alldvs_improve %>%
   mean_qi(cond_mean = b_Intercept + r_improve_6L, .width = c(.95)) %>%
   mutate_if(is.numeric, round, 2)
 
-within_alldvs_improve %>%
-  spread_draws(b_Intercept, r_improve_6L[improve_level,], r_questions[DV,]) %>%
-  median_qi(cond_mean = b_Intercept + r_improve_6L + r_questions, .width = c(.95, .90)) %>%
-  ungroup() %>%
-  mutate(improve_level = as.factor(improve_level),
-         improve_level = fct_relevel(improve_level, c('negative', 'neutral', 'slightly_more', 'moderately_more', 'much_more', 'substantially_more'))) %>%
-  ggplot(aes(y = DV, x = cond_mean, xmin = .lower, xmax = .upper, color = improve_level)) +
-  geom_pointinterval(position=position_dodge(width=1)) +
-  geom_vline(xintercept = 0) +
-  theme_classic()
 
 ### graph collapsed across DVs
 within_alldvs_improve %>%
@@ -1121,6 +1111,86 @@ within_improve_model_table <- rbind(within_improve_model_results$fixed %>%
 
 gtsave(within_improve_model_table, 'within_improve_model_table.rtf')
 
+# table for improvement levels across all DVs
+improve_dvcollapsed_table <- within_alldvs_improve %>%
+  spread_draws(b_Intercept, r_improve_6L[improve_level,]) %>%
+  mean_qi(cond_mean = b_Intercept + r_improve_6L, .width = c(.95)) %>%
+  mutate_if(is.numeric, round, 2) %>%
+  mutate(improve_level = as.factor(improve_level),
+         improve_level = fct_relevel(improve_level, c('negative', 'neutral', 'slightly_more', 'moderately_more', 'much_more', 'substantially_more'))) %>%
+  arrange(improve_level) %>%
+  select(improve_level, cond_mean, .lower, .upper) %>%
+  gt() %>%
+  cols_merge(columns = vars(.lower, .upper),
+             hide_columns = vars(.upper),
+             pattern = "[{1}, {2}]") %>%
+  cols_label(improve_level = 'Improvement Level',
+             cond_mean = 'Posterior Mean',
+             .lower = '95% CrI') %>%
+  cols_align(align = 'center',
+             columns = 2:3) %>%
+  cols_align(align = 'left',
+             columns = 1) %>%
+  tab_style(
+    style = cell_text(color = "black", weight = "bold"),
+    locations = list(
+      cells_column_labels(everything())
+    )
+  ) %>% 
+  tab_options(
+    table_body.hlines.color = "white",
+    table.border.top.color = "white",
+    table.border.top.width = px(3),
+    table.border.bottom.color = "white",
+    table.border.bottom.width = px(3),
+    column_labels.border.bottom.color = "black",
+    column_labels.border.bottom.width = px(2)
+  )
+  
+gtsave(improve_dvcollapsed_table, 'improve_dvcollapsed_table.rtf') 
+  
+# graph of improvement by DV
+improve_by_dv_graph <- within_alldvs_improve %>%
+  spread_draws(b_Intercept, r_improve_6L[improve_level,], r_questions[DV,]) %>%
+  median_qi(cond_mean = b_Intercept + r_improve_6L + r_questions, .width = c(.95, .8)) %>%
+  ungroup() %>%
+  mutate(improve_level = as.factor(improve_level),
+         improve_level = fct_relevel(improve_level, c('negative', 'neutral', 'slightly_more', 'moderately_more', 'much_more', 'substantially_more'))) %>%
+  mutate(DV = case_when(DV == 'diff_abstract_aligned' ~ 'Abstract Aligned',
+                        DV == 'diff_aligned' ~ 'Methods Aligned',
+                        DV == 'diff_analysis_rigor' ~ 'Analysis Rigor',
+                        DV == 'diff_did_learn' ~ 'Amt Learned',
+                        DV == 'diff_discussion_quality' ~ 'Disc Quality',
+                        DV == 'diff_field_importance' ~ 'Impt Discovery',
+                        DV == 'diff_inspire' ~ 'Inspire Research',
+                        DV == 'diff_intro_importance' ~ 'Impt Research',
+                        DV == 'diff_method_rigor' ~ 'Methdos Rigor',
+                        DV == 'diff_will_learn' ~ 'Amt will Learn',
+                        DV == 'diff_method_quality' ~ 'Methdos Quality',
+                        DV == 'diff_question_quality' ~ 'Quest Quality',
+                        DV == 'diff_question_novel' ~ 'Quest Novelty',
+                        DV == 'diff_method_creative' ~ 'Creative Methods',
+                        DV == 'diff_overall_quality' ~ 'Overall Quality',
+                        DV == 'diff_overall_import' ~ 'Impt Findings',
+                        DV == 'diff_justificed' ~ 'Conclusion Justified',
+                        DV == 'diff_result_quality' ~ 'Qualt Results',
+                        DV == 'diff_result_innovative' ~ 'Innovative Result')) %>%
+  ggplot(aes(y = improve_level, x = cond_mean, xmin = .lower, xmax = .upper)) +
+  geom_pointinterval(position=position_dodge(width=1)) +
+  geom_vline(xintercept = 0) +
+  facet_wrap(~ DV) +
+  scale_x_continuous(breaks=seq(-1, 2, 1),
+                     limits = c(-1, 2),
+                     name = 'Difference between RR and non-RR articles') +
+  theme_minimal() +
+  theme(axis.title.y = element_blank(),
+        axis.title.x = element_text(size = 10),
+        axis.text = element_text(size = 10),
+        panel.grid.minor.y = element_blank(),
+        strip.text = element_text(size=10))
+
+improve_by_dv_graph 
+  
 # exploration of guessing %>%
 wide_data %>%
   group_by(guessed_right) %>%
