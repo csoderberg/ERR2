@@ -13,6 +13,7 @@ library(lavaan)
 library(psych)
 library(patchwork)
 library(ggdist)
+library(gt)
 
 # load data
 long_data <- read_csv(here::here('cleaned_numeric_data_long.csv'), col_types = cols(article_type = col_factor(),
@@ -61,7 +62,9 @@ wide_data <- read_csv(here::here('cleaned_numeric_data_wide.csv'), col_types = c
                                                 Order == 'RRFirst' & (BelieveSecondRR == 3) ~ 1),
                       guessed_right = case_when(guessed_RR_right == 1 & guessed_nonRR_right == 1 ~ 'both',
                                               guessed_RR_right == 0 & guessed_nonRR_right == 0 ~ 'neither',
-                                              TRUE ~ 'half'))
+                                              TRUE ~ 'half'),
+                      guessed_right = as.factor(guessed_right),
+                      guessed_right = fct_relevel(guessed_right, c('neither', 'half', 'both')))
             
                        
 
@@ -72,6 +75,7 @@ contrasts(wide_data$Order) <- contr.sum(2)
 contrasts(wide_data$Match) <- contr.sum(2)
 contrasts(wide_data$improve_6L) <- contr.treatment(6)
 contrasts(wide_data$familiar_5L) <- contr.treatment(5)
+contrasts(wide_data$guessed_right) <- contr.treatment(3)
 contrasts(long_data$article_type) <- contr.treatment(2)
 contrasts(long_data$Field) <- contr.sum(3)
 contrasts(long_data$keyword_batch_comp) <- contr.sum(2)
@@ -277,6 +281,7 @@ for_descriptive %>%
 
 #### cor for rigor and quality beliefs
 cor(for_descriptive$BelieveRigor, for_descriptive$BelieveQuality)
+cor(for_descriptive$RRFamiliar, for_descriptive$PreregFamiliar)
 
 ### every RR or Pre-reg tallys
 for_descriptive %>%
@@ -620,18 +625,6 @@ diff_rigor_model_familiar_fixed %>%
 
 
 
-within_diff_pooled_guessed_model <- function(dv, set_priors, guessed) {
-  within_model_diffs <- brm(as.formula(paste(dv, "~ Field + keyword_batch_comp + guessed_right 
-                                                      Order + Match + Order*Match +
-                                                    (1|RR)")),
-                            data = wide_data,
-                            prior = set_priors, 
-                            family = 'gaussian',
-                            chains = 4)
-  return(within_model_diffs)
-}
-
-
 rbind(diff_rigor_model_familiar %>%
         spread_draws(b_Intercept, r_familiar_5L[familiar_level,]) %>%
         median_qi(cond_mean = b_Intercept + r_familiar_5L, .width = c(.95, .90)) %>%
@@ -702,7 +695,7 @@ fa.diagram(efa2_cutdown)
 
 ### within model with DVs as ML component
 mlm_dvs_data <- wide_data %>%
-  select(starts_with('diff'), participant_id, RR, Field, keyword_batch_comp, Order, Match, improve_6L, familiar_5L) %>%
+  select(starts_with('diff'), participant_id, RR, Field, keyword_batch_comp, Order, Match, improve_6L, familiar_5L, guessed_right) %>%
   pivot_longer(cols = starts_with('diff'), names_to = 'questions', values_to = 'response') %>%
   mutate(questions = as.factor(questions))
 
@@ -717,16 +710,6 @@ within_alldvs <-  brm(response ~ Field + keyword_batch_comp +
                           seed = 25,
                           control = list(adapt_delta = 0.95, max_treedepth = 15))
 
-summary(within_alldvs)
-pp_check(within_alldvs)
-WAIC(within_alldvs)
-loo(within_alldvs)
-
-# table of point estimates & CrI by DV
-within_alldvs %>%
-  spread_draws(b_Intercept, r_questions[dv,]) %>% 
-  mean_qi(dv_mean = b_Intercept + r_questions) %>%
-  mutate_if(is.numeric, round, 2)
 
 # main figure for RR vs. non-RR difference across DVs with partial pooling
 with_alldvs_graph_nums <- within_alldvs %>%
@@ -937,3 +920,119 @@ within_alldvs_familiar %>%
   geom_pointinterval(position=position_dodge(width=1)) +
   geom_vline(xintercept = 0) +
   theme_classic()
+
+
+
+
+#### Supplemental Analyses
+
+### Model fit and summary results from within-subjects ML pooled DV model
+
+# table of results
+within_alldvs_model_results <- summary(within_alldvs) 
+
+
+within_alldvs_model_table <- rbind(within_alldvs_model_results$fixed %>%
+        as.data.frame() %>% 
+        rownames_to_column(var = "Predictor"), 
+      within_alldvs_model_results$random$participant_id %>% 
+        as.data.frame() %>% 
+        rownames_to_column(var = "Predictor") %>% 
+        mutate(Predictor = 'sd(Intercept): Participant_id'),
+      within_alldvs_model_results$random$questions %>%
+        as.data.frame() %>% 
+        rownames_to_column(var = "Predictor") %>% 
+        mutate(Predictor = 'sd(Intercept): Question'),
+      within_alldvs_model_results$random$RR %>%
+        as.data.frame() %>% 
+        rownames_to_column(var = "Predictor") %>% 
+        mutate(Predictor = 'sd(Intercept): RR'),
+      within_alldvs_model_results$spec_pars %>%
+        as.data.frame() %>%
+        rownames_to_column(var = "Predictor")) %>%
+  mutate(effect_type = case_when(grepl('sd', Predictor) | grepl('sigma', Predictor) ~ 'Random Effects',
+                                 TRUE ~ 'Fixed Effects')) %>%
+  mutate_if(is.numeric, round, 2) %>%
+  select(-c(Bulk_ESS, Tail_ESS, Rhat)) %>%
+  rename(SE = 'Est.Error',
+         lower_ci = "l-95% CI",
+         upper_ci = "u-95% CI") %>%
+  gt(groupname_col = 'effect_type') %>%
+  tab_stubhead("label") %>% 
+  cols_merge(columns = vars(lower_ci,upper_ci),
+             hide_columns = vars(upper_ci),
+             pattern = "[{1}, {2}]") %>%
+  cols_label(lower_ci = '95% CrI',
+             Predictor = '') %>%
+  cols_align(align = 'center',
+             columns = 2:4) %>%
+  cols_align(align = 'left',
+             columns = 1) %>%
+  tab_style(
+    style = cell_text(color = "black", weight = "bold"),
+    locations = list(
+      cells_row_groups(),
+      cells_column_labels(everything())
+    )
+  ) %>% 
+  tab_options(
+    row_group.border.top.width = px(3),
+    row_group.border.top.color = "black",
+    row_group.border.bottom.color = "black",
+    table_body.hlines.color = "white",
+    table.border.top.color = "white",
+    table.border.top.width = px(3),
+    table.border.bottom.color = "white",
+    table.border.bottom.width = px(3),
+    column_labels.border.bottom.color = "black",
+    column_labels.border.bottom.width = px(2)
+  )
+
+gtsave(within_alldvs_model_table, 'within_alldvs_model_table.rtf')  
+  
+  
+
+# model fit information
+pp_check(within_alldvs)
+WAIC(within_alldvs)
+loo(within_alldvs)
+
+# table of point estimates & CrI by DV
+within_alldvs %>%
+  spread_draws(b_Intercept, r_questions[dv,]) %>% 
+  mean_qi(dv_mean = b_Intercept + r_questions) %>%
+  mutate_if(is.numeric, round, 2)
+
+
+# exploration of guessing %>%
+wide_data %>%
+  group_by(guessed_right) %>%
+  tally()
+
+within_diff_pooled_guessed_model <- brm(response ~ Field + keyword_batch_comp + guessed_right +
+                                          Order + Match + Order*Match +
+                                          (1|RR) + (1|participant_id) + (1|questions),
+                                        data = mlm_dvs_data,
+                                        prior = priors,
+                                        family = 'gaussian',
+                                        chains = 4,
+                                        iter = 4000,
+                                        seed = 30,
+                                        control = list(adapt_delta = .99, max_treedepth = 15))
+
+within_diff_pooled_guessed_model_slopes <- brm(response ~ Field + keyword_batch_comp + guessed_right +
+                                          Order + Match + Order*Match +
+                                          (guessed_right|RR) + (1|participant_id) + (guessed_right|questions),
+                                        data = mlm_dvs_data,
+                                        prior = priors,
+                                        family = 'gaussian',
+                                        chains = 4,
+                                        iter = 4000,
+                                        seed = 31,
+                                        control = list(adapt_delta = .99, max_treedepth = 15))
+
+
+within_diff_pooled_guessed_model %>%
+  spread_draws(b_Intercept, r_guessed_right)
+
+fixef(within_diff_pooled_guessed_model)  
