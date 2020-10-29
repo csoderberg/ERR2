@@ -862,7 +862,7 @@ within_diff_pooled_guessed_model_slopes <- brm(response ~ Field + keyword_batch_
                                         family = 'gaussian',
                                         chains = 4,
                                         iter = 4000,
-                                        seed = 30,
+                                        seed = 31,
                                         control = list(adapt_delta = .99, max_treedepth = 15))
 
 # get posteriors for guessing across DVs
@@ -880,6 +880,7 @@ posteriors_by_guessing <- within_diff_pooled_guessed_model_slopes %>%
                              guessed == 'guessed_right2' ~ 'Half',
                              guessed == 'guessed_right3' ~ 'Both'))
 
+# calculate number in the same direction as main model [where all are positive]
 posteriors_by_guessing %>%
   select(-c(.point, .interval)) %>%
   filter(.width == 0.95) %>%
