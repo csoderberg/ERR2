@@ -853,6 +853,17 @@ within_alldvs_familiar %>%
   geom_vline(xintercept = 0) +
   theme_classic()
 
+### model for guessing
+within_diff_pooled_guessed_model <- brm(response ~ Field + keyword_batch_comp + guessed_right +
+                                          Order + Match + Order*Match +
+                                          (1|RR) + (1|participant_id) + (1|questions),
+                                        data = mlm_dvs_data,
+                                        prior = priors,
+                                        family = 'gaussian',
+                                        chains = 4,
+                                        iter = 4000,
+                                        seed = 30,
+                                        control = list(adapt_delta = .99, max_treedepth = 15))
 
 
 
@@ -1195,30 +1206,8 @@ wide_data %>%
   group_by(guessed_right) %>%
   tally()
 
-within_diff_pooled_guessed_model <- brm(response ~ Field + keyword_batch_comp + guessed_right +
-                                          Order + Match + Order*Match +
-                                          (1|RR) + (1|participant_id) + (1|questions),
-                                        data = mlm_dvs_data,
-                                        prior = priors,
-                                        family = 'gaussian',
-                                        chains = 4,
-                                        iter = 4000,
-                                        seed = 30,
-                                        control = list(adapt_delta = .99, max_treedepth = 15))
 
 
-
-
-within_diff_pooled_guessed_model_slopes <- brm(response ~ Field + keyword_batch_comp + guessed_right +
-                                          Order + Match + Order*Match +
-                                          (1|RR) + (1|participant_id) + (guessed_right|questions),
-                                        data = mlm_dvs_data,
-                                        prior = priors,
-                                        family = 'gaussian',
-                                        chains = 4,
-                                        iter = 4000,
-                                        seed = 31,
-                                        control = list(adapt_delta = .99, max_treedepth = 15))
 
 # graph for guessing by DV
 guessed_by_dv_graph <- within_diff_pooled_guessed_model %>%
