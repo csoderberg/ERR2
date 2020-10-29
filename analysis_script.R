@@ -853,10 +853,10 @@ within_alldvs_familiar %>%
   geom_vline(xintercept = 0) +
   theme_classic()
 
-### model for guessing
-within_diff_pooled_guessed_model <- brm(response ~ Field + keyword_batch_comp + guessed_right +
+### model for guessing (random slope for guessing by question)
+within_diff_pooled_guessed_model_slopes <- brm(response ~ Field + keyword_batch_comp + guessed_right +
                                           Order + Match + Order*Match +
-                                          (1|RR) + (1|participant_id) + (1|questions),
+                                          (1|RR) + (1|participant_id) + (guessed_right|questions),
                                         data = mlm_dvs_data,
                                         prior = priors,
                                         family = 'gaussian',
@@ -865,7 +865,27 @@ within_diff_pooled_guessed_model <- brm(response ~ Field + keyword_batch_comp + 
                                         seed = 30,
                                         control = list(adapt_delta = .99, max_treedepth = 15))
 
+# get posteriors for guessing across DVs
+posteriors_by_guessing <- within_diff_pooled_guessed_model_slopes %>% 
+  spread_draws(b_Intercept, b_guessed_right2, b_guessed_right3, r_questions[DV,guessed]) %>%
+  pivot_longer(cols = b_Intercept:b_guessed_right3,
+               names_to = "fixed_guessed",
+               values_to = 'fixed_value') %>%
+  mutate(fixed_guessed = case_when(fixed_guessed == 'b_Intercept' ~ 'Intercept',
+                                   fixed_guessed == 'b_guessed_right2' ~ 'guessed_right2',
+                                   fixed_guessed == 'b_guessed_right3' ~ 'guessed_right3')) %>%
+  filter(guessed == fixed_guessed) %>%
+  mean_qi(mean = fixed_value + r_questions, .width = c(.95, .80)) %>%
+  mutate(guessed = case_when(guessed == 'Intercept' ~ 'None',
+                             guessed == 'guessed_right2' ~ 'Half',
+                             guessed == 'guessed_right3' ~ 'Both'))
 
+posteriors_by_guessing %>%
+  select(-c(.point, .interval)) %>%
+  filter(.width == 0.95) %>%
+  group_by(guessed) %>%
+  summarize(num_same_direction = sum(mean > 0))
+  
 
 #### Supplemental Analyses
 
@@ -1210,19 +1230,12 @@ wide_data %>%
 
 
 # graph for guessing by DV
-guessed_by_dv_graph <- within_diff_pooled_guessed_model %>%
-  spread_draws(b_Intercept, b_guessed_right2, b_guessed_right3, r_questions[DV,]) %>%
-  mean_qi(none = b_Intercept + r_questions,
-          half = b_Intercept + b_guessed_right2 + r_questions,
-          both = b_Intercept + b_guessed_right3 + r_questions,
-          .width = c(.95, .80)) %>%
-  select(-c(.point, .interval)) %>%
-  rename(none.mean = 'none',
-         half.mean = 'half',
-         both.mean = 'both') %>%
-  pivot_longer(col = none.mean:both.upper,
-               names_to = c("guessed", ".value"),
-               names_pattern = "(.+)\\.(.+)") %>%
+
+
+summary(within_diff_pooled_guessed_model_slopes)
+
+guessed_by_dv_graph <- posteriors_by_guessing %>%
+  ungroup() %>%
   mutate(DV = case_when(DV == 'diff_abstract_aligned' ~ 'Abstract Aligned',
                         DV == 'diff_aligned' ~ 'Methods Aligned',
                         DV == 'diff_analysis_rigor' ~ 'Analysis Rigor',
@@ -1242,7 +1255,7 @@ guessed_by_dv_graph <- within_diff_pooled_guessed_model %>%
                         DV == 'diff_justificed' ~ 'Conclusion Justified',
                         DV == 'diff_result_quality' ~ 'Qualt Results',
                         DV == 'diff_result_innovative' ~ 'Innovative Result')) %>%
-  ggplot(aes(y = guessed, x = mean, xmin = lower, xmax = upper)) +
+  ggplot(aes(y = guessed, x = mean, xmin = .lower, xmax = .upper)) +
   geom_pointinterval(position=position_dodge(width=1)) +
   geom_vline(xintercept = 0) +
   facet_wrap(~ DV) +
