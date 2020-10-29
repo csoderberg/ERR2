@@ -1071,7 +1071,7 @@ loo(within_alldvs_familiar)
 
 familiarity_by_dv_graph <- within_alldvs_familiar %>%
   spread_draws(b_Intercept, r_familiar_5L[familiar_level,], r_questions[DV,]) %>%
-  median_qi(cond_mean = b_Intercept + r_familiar_5L + r_questions, .width = c(.95, .80)) %>%
+  mean_qi(cond_mean = b_Intercept + r_familiar_5L + r_questions, .width = c(.95, .80)) %>%
   ungroup() %>%
   mutate(familiar_level = as.factor(familiar_level),
          familiar_level = fct_relevel(familiar_level, c('1', '2', '3', '4', '5')),
@@ -1183,7 +1183,7 @@ gtsave(within_improve_model_table, 'within_improve_model_table.rtf')
 # graph of improvement by DV
 improve_by_dv_graph <- within_alldvs_improve %>%
   spread_draws(b_Intercept, r_improve_6L[improve_level,], r_questions[DV,]) %>%
-  median_qi(cond_mean = b_Intercept + r_improve_6L + r_questions, .width = c(.95, .8)) %>%
+  mean_qi(cond_mean = b_Intercept + r_improve_6L + r_questions, .width = c(.95, .8)) %>%
   ungroup() %>%
   mutate(improve_level = as.factor(improve_level),
          improve_level = fct_relevel(improve_level, c('negative', 'neutral', 'slightly_more', 'moderately_more', 'much_more', 'substantially_more'))) %>%
@@ -1227,11 +1227,7 @@ wide_data %>%
   group_by(guessed_right) %>%
   tally()
 
-
-
-
 # graph for guessing by DV
-
 
 summary(within_diff_pooled_guessed_model_slopes)
 
