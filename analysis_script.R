@@ -1206,9 +1206,12 @@ within_diff_pooled_guessed_model <- brm(response ~ Field + keyword_batch_comp + 
                                         seed = 30,
                                         control = list(adapt_delta = .99, max_treedepth = 15))
 
+
+
+
 within_diff_pooled_guessed_model_slopes <- brm(response ~ Field + keyword_batch_comp + guessed_right +
                                           Order + Match + Order*Match +
-                                          (guessed_right|RR) + (1|participant_id) + (guessed_right|questions),
+                                          (1|RR) + (1|participant_id) + (guessed_right|questions),
                                         data = mlm_dvs_data,
                                         prior = priors,
                                         family = 'gaussian',
@@ -1217,8 +1220,53 @@ within_diff_pooled_guessed_model_slopes <- brm(response ~ Field + keyword_batch_
                                         seed = 31,
                                         control = list(adapt_delta = .99, max_treedepth = 15))
 
+# graph for guessing by DV
+guessed_by_dv_graph <- within_diff_pooled_guessed_model %>%
+  spread_draws(b_Intercept, b_guessed_right2, b_guessed_right3, r_questions[DV,]) %>%
+  mean_qi(none = b_Intercept + r_questions,
+          half = b_Intercept + b_guessed_right2 + r_questions,
+          both = b_Intercept + b_guessed_right3 + r_questions,
+          .width = c(.95, .80)) %>%
+  select(-c(.point, .interval)) %>%
+  rename(none.mean = 'none',
+         half.mean = 'half',
+         both.mean = 'both') %>%
+  pivot_longer(col = none.mean:both.upper,
+               names_to = c("guessed", ".value"),
+               names_pattern = "(.+)\\.(.+)") %>%
+  mutate(DV = case_when(DV == 'diff_abstract_aligned' ~ 'Abstract Aligned',
+                        DV == 'diff_aligned' ~ 'Methods Aligned',
+                        DV == 'diff_analysis_rigor' ~ 'Analysis Rigor',
+                        DV == 'diff_did_learn' ~ 'Amt Learned',
+                        DV == 'diff_discussion_quality' ~ 'Disc Quality',
+                        DV == 'diff_field_importance' ~ 'Impt Discovery',
+                        DV == 'diff_inspire' ~ 'Inspire Research',
+                        DV == 'diff_intro_importance' ~ 'Impt Research',
+                        DV == 'diff_method_rigor' ~ 'Methdos Rigor',
+                        DV == 'diff_will_learn' ~ 'Amt will Learn',
+                        DV == 'diff_method_quality' ~ 'Methdos Quality',
+                        DV == 'diff_question_quality' ~ 'Quest Quality',
+                        DV == 'diff_question_novel' ~ 'Quest Novelty',
+                        DV == 'diff_method_creative' ~ 'Creative Methods',
+                        DV == 'diff_overall_quality' ~ 'Overall Quality',
+                        DV == 'diff_overall_import' ~ 'Impt Findings',
+                        DV == 'diff_justificed' ~ 'Conclusion Justified',
+                        DV == 'diff_result_quality' ~ 'Qualt Results',
+                        DV == 'diff_result_innovative' ~ 'Innovative Result')) %>%
+  ggplot(aes(y = guessed, x = mean, xmin = lower, xmax = upper)) +
+  geom_pointinterval(position=position_dodge(width=1)) +
+  geom_vline(xintercept = 0) +
+  facet_wrap(~ DV) +
+  scale_x_continuous(breaks=seq(-1, 2, 1),
+                     limits = c(-1, 2),
+                     name = 'Difference between RR and non-RR articles') +
+  theme_minimal() +
+  theme(axis.title.y = element_blank(),
+        axis.title.x = element_text(size = 16),
+        axis.text = element_text(size = 16),
+        panel.grid.minor.y = element_blank(),
+        strip.text = element_text(size=16))
 
-within_diff_pooled_guessed_model %>%
-  spread_draws(b_Intercept, r_guessed_right)
-
-fixef(within_diff_pooled_guessed_model)  
+guessed_by_dv_graph
+  
+  
