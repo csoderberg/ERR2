@@ -409,67 +409,6 @@ for_descriptive %>%
 
 #### Exploratory Analyses ####
 
-## descriptives for guessing
-
-# means by article type and guessed right
-View(long_data %>% 
-       filter((Order == 'RRFirst' & article_type == 'RR') | (Order == 'RRSecond' & article_type == 'nonRR')) %>% 
-       group_by(question, article_type, guessed_right_first) %>% 
-       summarize(mean = mean(response, na.rm = T), n = n()))
-
-# what is correlated with guessing right?
-long_data %>% 
-  filter((Order == 'RRFirst' & article_type == 'RR') | (Order == 'RRSecond' & article_type == 'nonRR')) %>% 
-  distinct(participant_id, .keep_all = T) %>%
-  mutate(Field = as.numeric(Field),
-         EverPrereg = case_when(is.na(EverPrereg) ~ 0,
-                                !is.na(EverPrereg) ~ EverPrereg),
-         EverRR = case_when(is.na(EverRR) ~ 0,
-                            !is.na(EverRR) ~ EverPrereg)) %>%
-  select(guessed_right_first, Field, RRFamiliar, EverRR, PreregFamiliar, EverPrereg, BelieveRigor, BelieveQuality) %>%
-  cor(method = 'spearman') %>%
-  as_tibble() %>%
-  slice(1L)
-
-# what is correct guess rate by article?
-bind_rows(long_data %>% 
-  filter((Order == 'RRFirst' & article_type == 'RR') | (Order == 'RRSecond' & article_type == 'nonRR') & article_type == 'RR') %>% 
-  distinct(participant_id, .keep_all = T) %>%
-  group_by(RR, article_type, guessed_right_first) %>%
-  tally() %>%
-  group_by(RR, article_type) %>%
-  mutate(perc_guess = round(100 *n/sum(n),2)) %>%
-  select(-n) %>%
-  pivot_wider(names_from = 'guessed_right_first', values_from = 'perc_guess') %>%
-  rename(guessed_right = `1`,
-         guessed_not_right = `0`) %>%
-  mutate(guessed_right = case_when(is.na(guessed_right) ~ 0,
-                                   TRUE ~ guessed_right),
-         guessed_not_right = case_when(is.na(guessed_not_right) ~ 0,
-                                       TRUE ~ guessed_not_right)) %>%
-  arrange(article_type, guessed_right),
-  long_data %>% 
-              filter((Order == 'RRFirst' & article_type == 'RR') | (Order == 'RRSecond' & article_type == 'nonRR') & article_type == 'nonRR') %>% 
-              distinct(participant_id, .keep_all = T) %>%
-              group_by(RR, Match, guessed_right_first) %>%
-              tally() %>%
-              group_by(RR, Match) %>%
-              mutate(perc_guess = round(100 *n/sum(n),2)) %>%
-              select(-n) %>%
-              pivot_wider(names_from = 'guessed_right_first', values_from = 'perc_guess') %>%
-              rename(guessed_right = `1`,
-                     guessed_not_right = `0`,
-                     article_type = Match) %>%
-              mutate(guessed_right = case_when(is.na(guessed_right) ~ 0,
-                                               TRUE ~ guessed_right),
-                     guessed_not_right = case_when(is.na(guessed_not_right) ~ 0,
-                                                   TRUE ~ guessed_not_right)) %>%
-              arrange(article_type, guessed_right)) %>%
-  write_csv('guessed_first_right_article_perc.csv')
-
-
-
-
 ### within model with DVs as ML component
 mlm_dvs_data <- wide_data %>%
   select(starts_with('diff'), participant_id, RR, Field, keyword_batch_comp, Order, Match, improve_6L, familiar_5L, guessed_right) %>%
