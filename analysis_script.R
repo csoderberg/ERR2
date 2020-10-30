@@ -542,6 +542,26 @@ rbind(within_models %>%
   theme_classic()
   
 
+### Btw subjects model with DV as ML
+between_model_mlm <- brm(response ~ Field + keyword_batch_comp + article_type + Match + article_type*Match +
+                       (1|RR) + (1|question) + (1|participant_id),
+                     data = long_data %>% filter((Order == 'RRFirst' & article_type == 'RR') | (Order == 'RRSecond' & article_type == 'nonRR')),
+                     prior = priors,
+                     family = 'gaussian',
+                     seed = 53,
+                     chains = 4,
+                     iter = 8000,
+                     control = list(adapt_delta = 0.99, max_treedepth = 15))
+
+between_model_mlm_slopes <- brm(response ~ Field + keyword_batch_comp + article_type + Match + article_type*Match +
+                           (article_type|RR) + (article_type|question) + (1|participant_id),
+                         data = long_data %>% filter((Order == 'RRFirst' & article_type == 'RR') | (Order == 'RRSecond' & article_type == 'nonRR')),
+                         prior = priors,
+                         family = 'gaussian',
+                         seed = 54,
+                         chains = 4,
+                         iter = 8000,
+                         control = list(adapt_delta = 0.99, max_treedepth = 15))
 
 # partial pooling across all DVs and improve
 
