@@ -1056,5 +1056,44 @@ guessed_by_dv_graph <- posteriors_by_guessing %>%
         strip.text = element_text(size=16))
 
 guessed_by_dv_graph
+
+
+##### full model report for between subjects ML model
+summary(posteriors_btw_mlm)
+pp_check(posteriors_btw_mlm)
+waic(posteriors_btw_mlm)
+loo(posteriors_btw_mlm)
   
+btw_mlm_slopes_dv_posteriors <- posteriors_btw_mlm %>%
+  ungroup() %>%
+  filter(.width == 0.95) %>%
+  mutate_if(is.numeric, round, 2) %>%
+  select(DV, article_effect, .lower, .upper) %>%
+  gt() %>%
+  cols_merge(columns = vars(.lower, .upper),
+             hide_columns = vars(.upper),
+             pattern = "[{1}, {2}]") %>%
+  cols_label(article_effect = 'Posterior Mean',
+             .lower = '95% CrI') %>%
+  cols_align(align = 'center',
+             columns = 2:3) %>%
+  cols_align(align = 'left',
+             columns = 1) %>%
+  tab_style(
+    style = cell_text(color = "black", weight = "bold"),
+    locations = list(
+      cells_column_labels(everything())
+    )
+  ) %>% 
+  tab_options(
+    table_body.hlines.color = "white",
+    table.border.top.color = "white",
+    table.border.top.width = px(3),
+    table.border.bottom.color = "white",
+    table.border.bottom.width = px(3),
+    column_labels.border.bottom.color = "black",
+    column_labels.border.bottom.width = px(2)
+  )
+
+gtsave(btw_mlm_slopes_dv_posteriors, btw_mlm_slopes_dv_posteriors.rtf')
   
