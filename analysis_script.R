@@ -563,6 +563,17 @@ between_model_mlm_slopes <- brm(response ~ Field + keyword_batch_comp + article_
                          iter = 8000,
                          control = list(adapt_delta = 0.99, max_treedepth = 15))
 
+# get posteriors by DV
+posteriors_btw_mlm <- between_model_mlm_slopes %>%
+                          spread_draws(b_article_type2, r_RR[,article_type], r_question[DV, article_type]) %>%
+                          filter(article_type == 'article_type2') %>%
+                          mean_qi(article_effect = b_article_type2 + r_RR + r_question, .width = c(.95, .80))
+
+# get overall, min and max across DVs
+posteriors_btw_mlm %>%
+  filter(.width == 0.95) %>%
+  summarize(mean = round(mean(article_effect),2), min = round(min(article_effect),2), max = round(max(article_effect),2))
+
 # partial pooling across all DVs and improve
 
 within_alldvs_improve <-  brm(response ~ Field + keyword_batch_comp + 
