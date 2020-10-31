@@ -1059,11 +1059,77 @@ guessed_by_dv_graph
 
 
 ##### full model report for between subjects ML model
-summary(posteriors_btw_mlm)
-pp_check(posteriors_btw_mlm)
-waic(posteriors_btw_mlm)
-loo(posteriors_btw_mlm)
-  
+
+# table of model results
+btw_mlm_slopes_results <- summary(between_model_mlm_slopes)
+
+btw_mlm_slopes_table <-  rbind(btw_mlm_slopes_results$fixed %>%
+                                as.data.frame() %>%
+                                 rownames_to_column(var = 'Predictor'),
+                               btw_mlm_slopes_results$random$RR %>%
+                                 as.data.frame() %>%
+                                 rownames_to_column(var = "Predictor") %>% 
+                                 mutate(Predictor = case_when(Predictor == 'sd(Intercept)' ~ 'sd(Intercept): RR',
+                                                               Predictor == 'sd(article_type2)' ~ 'sd(article_type2): RR',
+                                                               Predictor == 'cor(Intercept,article_type2)' ~ 'cor(Intercept,article_type2): RR')),
+                               btw_mlm_slopes_results$random$question %>%
+                                 as.data.frame() %>%
+                                 rownames_to_column(var = "Predictor") %>% 
+                                 mutate(Predictor = case_when(Predictor == 'sd(Intercept)' ~ 'sd(Intercept): question',
+                                                              Predictor == 'sd(article_type2)' ~ 'sd(article_type2): question',
+                                                              Predictor == 'cor(Intercept,article_type2)' ~ 'cor(Intercept,article_type2): question')),
+                               btw_mlm_slopes_results$random$participant_id %>%
+                                 as.data.frame() %>%
+                                 rownames_to_column(var = "Predictor") %>% 
+                                 mutate(Predictor = 'sd(Intercept): participant_id'),
+                               btw_mlm_slopes_results$spec_pars %>%
+                                 as.data.frame() %>%
+                                 rownames_to_column(var = "Predictor")) %>%
+                          mutate(effect_type = case_when(grepl('sd', Predictor) | grepl('sigma', Predictor) | grepl('cor', Predictor) ~ 'Random Effects',
+                                 TRUE ~ 'Fixed Effects')) %>%
+                          mutate_if(is.numeric, round, 2) %>%
+                          select(-c(Bulk_ESS, Tail_ESS, Rhat)) %>%
+                          rename(SE = 'Est.Error',
+                                 lower_ci = "l-95% CI",
+                                 upper_ci = "u-95% CI") %>%
+                          gt(groupname_col = 'effect_type') %>%
+                          tab_stubhead("label") %>% 
+                          cols_merge(columns = vars(lower_ci,upper_ci),
+                                     hide_columns = vars(upper_ci),
+                                     pattern = "[{1}, {2}]") %>%
+                          cols_label(lower_ci = '95% CrI',
+                                     Predictor = '') %>%
+                          cols_align(align = 'center',
+                                     columns = 2:4) %>%
+                          cols_align(align = 'left',
+                                     columns = 1) %>%
+                          tab_style(
+                            style = cell_text(color = "black", weight = "bold"),
+                            locations = list(
+                              cells_row_groups(),
+                              cells_column_labels(everything())
+                            )
+                          ) %>% 
+                          tab_options(
+                            row_group.border.top.width = px(3),
+                            row_group.border.top.color = "black",
+                            row_group.border.bottom.color = "black",
+                            table_body.hlines.color = "white",
+                            table.border.top.color = "white",
+                            table.border.top.width = px(3),
+                            table.border.bottom.color = "white",
+                            table.border.bottom.width = px(3),
+                            column_labels.border.bottom.color = "black",
+                            column_labels.border.bottom.width = px(2)
+                          )
+
+gtsave(btw_mlm_slopes_table, 'btw_mlm_slopes_table.rtf')  
+
+# posterior predictive check graph
+btw_mlm_slopes_pp_check_graph <- pp_check(between_model_mlm_slopes)
+btw_mlm_slopes_pp_check_graph
+
+# table of posteriors for each DV
 btw_mlm_slopes_dv_posteriors <- posteriors_btw_mlm %>%
   ungroup() %>%
   filter(.width == 0.95) %>%
@@ -1095,5 +1161,5 @@ btw_mlm_slopes_dv_posteriors <- posteriors_btw_mlm %>%
     column_labels.border.bottom.width = px(2)
   )
 
-gtsave(btw_mlm_slopes_dv_posteriors, btw_mlm_slopes_dv_posteriors.rtf')
+gtsave(btw_mlm_slopes_dv_posteriors, 'btw_mlm_slopes_dv_posteriors.rtf')
   
