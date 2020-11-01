@@ -228,9 +228,33 @@ btw_posteriors_individual_dvs <- between_models %>%
   mutate(posteriors = map(between_pooled_model_results, btw_posteriors)) %>%
   unnest(posteriors) %>%
   select(-c(seed_num, between_pooled_model_results)) %>%
-  mutate(model = 'individual_dvs')
+  mutate(model = 'Individual DVs')
 
 
+## create graph comparing posteriors across models for each DV
+compare_btw_DV_models_graph <- rbind(btw_posteriors_individual_dvs,
+                            posteriors_btw_mlm %>%
+                              mutate(model = 'All DVs') %>%
+                              rename(dv = "DV") %>%
+                              select(-article_type) %>%
+                              ungroup()) %>%
+  as.data.frame() %>%
+  mutate(dv = fct_rev(dv)) %>%
+  rename(Model = 'model') %>%
+  ggplot(aes(y = dv, x = article_effect, xmin = .lower, xmax = .upper, color = Model)) +
+  geom_pointinterval(position=position_dodge(width=0.75)) +
+  geom_vline(xintercept = 0) +
+  scale_x_continuous(breaks=seq(-.5, 1.5, .5),
+                     limits = c(-.5, 1.5),
+                     name = 'Difference between RR and non-RR articles') +
+  theme_minimal() +
+  theme(axis.title.y = element_blank(),
+        axis.title.x = element_text(size = 16),
+        axis.text = element_text(size = 16),
+        panel.grid.minor.y = element_blank(),
+        strip.text = element_text(size=16))
+
+compare_btw_DV_models_graph
 
 #graphs for between models
 # get all intercepts into wide format for graphing
