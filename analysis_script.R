@@ -182,7 +182,7 @@ between_pooled_model <- function(dv, seed_num) {
 
 
 # between-subjects model for batch 1
-between_keywords1_model <- function(dv, set_priors) {
+between_keywords1_model <- function(dv, seed_num) {
   between_keywords1 <- brm(response ~ Field + article_type + Match + article_type*Match +
                                    (article_type|RR),
                                  data = long_data %>% 
@@ -191,9 +191,18 @@ between_keywords1_model <- function(dv, set_priors) {
                                    filter((Order == 'RRFirst' & article_type == 'RR') | (Order == 'RRSecond' & article_type == 'nonRR')),
                                  prior = priors,
                                  family = 'gaussian',
+                                 iter = 6000,
+                                 seed = seed_num,
+                                 control = list(adapt_delta = 0.95),
                                  chains = 4)
   return(between_keywords1)
 }
+
+between_models_keywords1 <- cbind(dv = long_data %>% select(question) %>% distinct(question) %>% pull(question),
+                                  seed_num = c(201:219)) %>%
+                              as_tibble() %>%
+                              mutate(seed_num = as.numeric(seed_num)) %>%
+                              mutate(between_pooled_model_results = pmap(list(dv, seed_num), between_keywords1_model))
 
 # differenc score model for batched 2+3
 between_keywords2_model <- function(dv, set_priors) {
@@ -255,6 +264,8 @@ compare_btw_DV_models_graph <- rbind(btw_posteriors_individual_dvs,
         strip.text = element_text(size=14))
 
 compare_btw_DV_models_graph
+
+
 
 #graphs for between models
 # get all intercepts into wide format for graphing
