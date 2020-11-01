@@ -205,7 +205,7 @@ between_models_keywords1 <- cbind(dv = long_data %>% select(question) %>% distin
                               mutate(between_pooled_model_results = pmap(list(dv, seed_num), between_keywords1_model))
 
 # differenc score model for batched 2+3
-between_keywords2_model <- function(dv, set_priors) {
+between_keywords2_model <- function(dv, seed_num) {
   between_keywords2 <- brm(response ~ Field + article_type + Match + article_type*Match +
                                    (article_type|RR),
                                  data = long_data %>% 
@@ -214,9 +214,19 @@ between_keywords2_model <- function(dv, set_priors) {
                                    filter((Order == 'RRFirst' & article_type == 'RR') | (Order == 'RRSecond' & article_type == 'nonRR')),
                                  prior = priors,
                                  family = 'gaussian',
+                                 iter = 6000,
+                                 seed = seed_num,
+                                 control = list(adapt_delta = 0.95),
                                  chains = 4)
 }
 
+between_models_keywords2 <- cbind(dv = long_data %>% select(question) %>% distinct(question) %>% pull(question),
+                                  seed_num = c(301:319)) %>%
+                              as_tibble() %>%
+                              mutate(seed_num = as.numeric(seed_num)) %>%
+                              as_tibble() %>%
+                              mutate(seed_num = as.numeric(seed_num)) %>%
+                              mutate(between_pooled_model_results = pmap(list(dv, seed_num), between_keywords2_model))
 
 # Set up which run all btw subj individual dv models
 between_models <- cbind(dv = long_data %>% select(question) %>% distinct(question) %>% pull(question),
