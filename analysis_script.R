@@ -95,9 +95,6 @@ priors <- c(set_prior("normal(0,2", "Intercept"),
             set_prior("normal(0, 2.5)", "sd"),
             set_prior("normal(0, 2)", "sigma"))
 
-
-
-
 #### functions for within models ####
 
 # set up function to run within difference pooled models on all dvs
@@ -170,12 +167,15 @@ mcmc_intervals(intercepts, prob = .95)
 #### functions for between subjects models ####
 
 # between-subjects models comparing pooled, batch 1, batch 2 + 3
-between_pooled_model <- function(dv, set_priors) {
+between_pooled_model <- function(dv, seed_num) {
   between_model <- brm(response ~ Field + keyword_batch_comp + article_type + Match + article_type*Match +
                          (article_type|RR),
                        data = long_data %>% filter(grepl(as.character(dv), question)) %>% filter((Order == 'RRFirst' & article_type == 'RR') | (Order == 'RRSecond' & article_type == 'nonRR')),
                        prior = priors,
                        family = 'gaussian',
+                       iter = 6000,
+                       seed = seed_num,
+                       control = list(adapt_delta = 0.95),
                        chains = 4)
   return(between_model)
   }
@@ -209,11 +209,26 @@ between_keywords2_model <- function(dv, set_priors) {
 }
 
 
-# Set up which model/prior/dv combinations to run for between models
-between_models <- crossing(dv = long_data %>% select(question) %>% distinct(question) %>% pull(question),
-                          set_priors = c(list(priors))) %>%
-  mutate(between_pooled_model_results = pmap(list(dv, set_priors), between_pooled_model)) %>%
-  mutate(posteriors = pmap(list(between_pooled_model_results, variable = dv, term = 'b_article_type2'), create_posteriors_term))
+# Set up which run all btw subj individual dv models
+between_models <- cbind(dv = long_data %>% select(question) %>% distinct(question) %>% pull(question),
+                          seed_num = c(101:119)) %>%
+  as_tibble() %>%
+  mutate(seed_num = as.numeric(seed_num)) %>%
+  mutate(between_pooled_model_results = pmap(list(dv, seed_num), between_pooled_model))
+
+# create function to get posteriors for individual models
+btw_posteriors <- function(results) {
+  results %>%
+    spread_draws(b_article_type2) %>%
+    mean_qi(article_effect = b_article_type2, .width = c(.95, .80))
+}
+
+#get and save posteriors for each dv
+btw_posteriors_individual_dvs <- between_models %>%
+  mutate(posteriors = map(between_pooled_model_results, btw_posteriors)) %>%
+  unnest(posteriors) %>%
+  select(-c(seed_num, between_pooled_model_results)) %>%
+  mutate(model = 'individual_dvs')
 
 
 
@@ -1017,9 +1032,74 @@ wide_data %>%
   group_by(guessed_right) %>%
   tally()
 
-# graph for guessing by DV
+# full guessing model summary table
 
-summary(within_diff_pooled_guessed_model_slopes)
+guessing_model_results <- summary(within_diff_pooled_guessed_model_slopes)
+
+guessing_model_table <-  rbind(guessing_model_results$fixed %>%
+                                 as.data.frame() %>%
+                                 rownames_to_column(var = 'Predictor'),
+                               guessing_model_results$random$RR %>%
+                                 as.data.frame() %>%
+                                 rownames_to_column(var = "Predictor") %>% 
+                                 mutate(Predictor = case_when(Predictor == 'sd(Intercept)' ~ 'sd(Intercept): RR')),
+                               guessing_model_results$random$question %>%
+                                 as.data.frame() %>%
+                                 rownames_to_column(var = "Predictor") %>% 
+                                 mutate(Predictor = case_when(Predictor == 'sd(Intercept)' ~ 'sd(Intercept): question',
+                                                              Predictor == 'sd(guessed_right2)' ~ 'sd(guessed_right2): question',
+                                                              Predictor == 'sd(guessed_right3)' ~ 'sd(guessed_right3): question',
+                                                              Predictor == 'cor(Intercept,guessed_right2)' ~ 'cor(Intercept,guessed_right2): question',
+                                                              Predictor == 'cor(Intercept,guessed_right3)' ~ 'cor(Intercept,guessed_right3): question',
+                                                              Predictor == 'cor(guessed_right2,guessed_right3)' ~ 'cor(guessed_right2,guessed_right3): question')),
+                               guessing_model_results$random$participant_id %>%
+                                 as.data.frame() %>%
+                                 rownames_to_column(var = "Predictor") %>% 
+                                 mutate(Predictor = 'sd(Intercept): participant_id'),
+                               guessing_model_results$spec_pars %>%
+                                 as.data.frame() %>%
+                                 rownames_to_column(var = "Predictor")) %>%
+  mutate(effect_type = case_when(grepl('sd', Predictor) | grepl('sigma', Predictor) | grepl('cor', Predictor) ~ 'Random Effects',
+                                 TRUE ~ 'Fixed Effects')) %>%
+  mutate_if(is.numeric, round, 2) %>%
+  select(-c(Bulk_ESS, Tail_ESS, Rhat)) %>%
+  rename(SE = 'Est.Error',
+         lower_ci = "l-95% CI",
+         upper_ci = "u-95% CI") %>%
+  gt(groupname_col = 'effect_type') %>%
+  tab_stubhead("label") %>% 
+  cols_merge(columns = vars(lower_ci,upper_ci),
+             hide_columns = vars(upper_ci),
+             pattern = "[{1}, {2}]") %>%
+  cols_label(lower_ci = '95% CrI',
+             Predictor = '') %>%
+  cols_align(align = 'center',
+             columns = 2:4) %>%
+  cols_align(align = 'left',
+             columns = 1) %>%
+  tab_style(
+    style = cell_text(color = "black", weight = "bold"),
+    locations = list(
+      cells_row_groups(),
+      cells_column_labels(everything())
+    )
+  ) %>% 
+  tab_options(
+    row_group.border.top.width = px(3),
+    row_group.border.top.color = "black",
+    row_group.border.bottom.color = "black",
+    table_body.hlines.color = "white",
+    table.border.top.color = "white",
+    table.border.top.width = px(3),
+    table.border.bottom.color = "white",
+    table.border.bottom.width = px(3),
+    column_labels.border.bottom.color = "black",
+    column_labels.border.bottom.width = px(2)
+  )
+
+gtsave(guessing_model_table, 'guessing_model_table.rtf')  
+
+# graph for guessing by DV
 
 guessed_by_dv_graph <- posteriors_by_guessing %>%
   ungroup() %>%
