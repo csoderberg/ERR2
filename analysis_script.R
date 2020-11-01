@@ -715,7 +715,7 @@ posteriors_by_guessing %>%
   filter(.width == 0.95) %>%
   group_by(guessed) %>%
   summarize(num_same_direction = sum(mean > 0),
-            mean = mean(mean),
+            mean_effect = mean(mean),
             min = min(mean),
             max = max(mean))
   
