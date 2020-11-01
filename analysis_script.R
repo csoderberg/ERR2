@@ -249,10 +249,10 @@ compare_btw_DV_models_graph <- rbind(btw_posteriors_individual_dvs,
                      name = 'Difference between RR and non-RR articles') +
   theme_minimal() +
   theme(axis.title.y = element_blank(),
-        axis.title.x = element_text(size = 16),
-        axis.text = element_text(size = 16),
+        axis.title.x = element_text(size = 14),
+        axis.text = element_text(size = 14),
         panel.grid.minor.y = element_blank(),
-        strip.text = element_text(size=16))
+        strip.text = element_text(size=14))
 
 compare_btw_DV_models_graph
 
@@ -714,7 +714,10 @@ posteriors_by_guessing %>%
   select(-c(.point, .interval)) %>%
   filter(.width == 0.95) %>%
   group_by(guessed) %>%
-  summarize(num_same_direction = sum(mean > 0))
+  summarize(num_same_direction = sum(mean > 0),
+            mean = mean(mean),
+            min = min(mean),
+            max = max(mean))
   
 
 #### Supplemental Analyses
