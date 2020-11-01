@@ -216,7 +216,7 @@ between_keywords2_model <- function(dv, seed_num) {
                                  family = 'gaussian',
                                  iter = 6000,
                                  seed = seed_num,
-                                 control = list(adapt_delta = 0.95),
+                                 control = list(adapt_delta = 0.99),
                                  chains = 4)
 }
 
@@ -249,6 +249,41 @@ btw_posteriors_individual_dvs <- between_models %>%
   select(-c(seed_num, between_pooled_model_results)) %>%
   mutate(model = 'Individual DVs')
 
+btw_posteriors_keyowrd1 <- between_models_keywords1  %>%
+  mutate(posteriors = map(between_pooled_model_results, btw_posteriors)) %>%
+  unnest(posteriors) %>%
+  select(-c(seed_num, between_pooled_model_results)) %>%
+  mutate(model = 'Initial Keywords')
+
+btw_posteriors_keyword2 <- between_models_keywords2  %>%
+  mutate(posteriors = map(between_pooled_model_results, btw_posteriors)) %>%
+  unnest(posteriors) %>%
+  select(-c(seed_num, between_pooled_model_results)) %>%
+  mutate(model = 'Reduced Keywords')
+
+### create graph comparing individual DV btw subjs keyword models
+compare_btw_keyword_models <- rbind(btw_posteriors_individual_dvs,
+                                    btw_posteriors_keyowrd1,
+                                    btw_posteriors_keyword2) %>%
+                                as.data.frame() %>%
+                                mutate(dv = fct_rev(dv)) %>%
+                                mutate(model = case_when(model == 'Individual DVs' ~ 'Pooled Keywords',
+                                                         TRUE ~ model)) %>%
+                                rename(Model = 'model') %>%
+                                ggplot(aes(y = dv, x = article_effect, xmin = .lower, xmax = .upper, color = Model)) +
+                                geom_pointinterval(position=position_dodge(width=0.85)) +
+                                geom_vline(xintercept = 0) +
+                                scale_x_continuous(breaks=seq(-1, 1.5, .5),
+                                                   limits = c(-1, 1.75),
+                                                   name = 'Difference between RR and non-RR articles') +
+                                theme_minimal() +
+                                theme(axis.title.y = element_blank(),
+                                      axis.title.x = element_text(size = 14),
+                                      axis.text = element_text(size = 14),
+                                      panel.grid.minor.y = element_blank(),
+                                      strip.text = element_text(size=14))
+
+compare_btw_keyword_models
 
 ## create graph comparing posteriors across models for each DV
 compare_btw_DV_models_graph <- rbind(btw_posteriors_individual_dvs,
