@@ -285,30 +285,7 @@ compare_btw_keyword_models <- rbind(btw_posteriors_individual_dvs,
 
 compare_btw_keyword_models
 
-## create graph comparing posteriors across models for each DV
-compare_btw_DV_models_graph <- rbind(btw_posteriors_individual_dvs,
-                            posteriors_btw_mlm %>%
-                              mutate(model = 'All DVs') %>%
-                              rename(dv = "DV") %>%
-                              select(-article_type) %>%
-                              ungroup()) %>%
-  as.data.frame() %>%
-  mutate(dv = fct_rev(dv)) %>%
-  rename(Model = 'model') %>%
-  ggplot(aes(y = dv, x = article_effect, xmin = .lower, xmax = .upper, color = Model)) +
-  geom_pointinterval(position=position_dodge(width=0.75)) +
-  geom_vline(xintercept = 0) +
-  scale_x_continuous(breaks=seq(-.5, 1.5, .5),
-                     limits = c(-.5, 1.5),
-                     name = 'Difference between RR and non-RR articles') +
-  theme_minimal() +
-  theme(axis.title.y = element_blank(),
-        axis.title.x = element_text(size = 14),
-        axis.text = element_text(size = 14),
-        panel.grid.minor.y = element_blank(),
-        strip.text = element_text(size=14))
 
-compare_btw_DV_models_graph
 
 
 
@@ -738,7 +715,7 @@ within_alldvs_familiar %>%
   geom_vline(xintercept = 0) +
   theme_classic()
 
-### model for guessing (random slope for guessing by question)
+#### model for guessing (random slope for guessing by question) ####
 within_diff_pooled_guessed_model_slopes <- brm(response ~ Field + keyword_batch_comp + guessed_right +
                                           Order + Match + Order*Match +
                                           (1|RR) + (1|participant_id) + (guessed_right|questions),
@@ -776,9 +753,9 @@ posteriors_by_guessing %>%
             max = max(mean))
   
 
-#### Supplemental Analyses
+##### Supplemental Analyses #####
 
-### Correlations between DVs
+#### Correlations between DVs ####
 png(height = 600, width = 600, file = 'dv_corrs.png')
 
 wide_data %>%
@@ -787,7 +764,7 @@ wide_data %>%
   corrplot(type = 'upper', order="hclust", method = 'circle')
 dev.off() 
 
-### Model fit and summary results from within-subjects ML pooled DV model
+#### Model fit and summary results from within-subjects ML pooled DV model ####
 
 # table of results
 within_alldvs_model_results <- summary(within_alldvs) 
@@ -886,10 +863,11 @@ within_alldvs_dv_posteriors <- within_alldvs %>%
 gtsave(within_alldvs_dv_posteriors, 'within_alldvs_dv_posteriors.rtf')
 
 
-#### Model fit and summary statistics for exploratory model with familiarity
+#### Familiarity variable exploratory analysis supplement ####
 
 within_familiar_model_results <- summary(within_alldvs_familiar) 
 
+# model results table
 within_familiar_model_table <- rbind(within_familiar_model_results$fixed %>%
                                      as.data.frame() %>% 
                                      rownames_to_column(var = "Predictor"), 
@@ -1003,9 +981,11 @@ familiarity_by_dv_graph <- within_alldvs_familiar %>%
 
 familiarity_by_dv_graph
 
-#### Model fit and summary for exploratory analysis of improve variable
+#### Improve variable exploratory analysis supplement ####
+
 within_improve_model_results <- summary(within_alldvs_improve)
 
+# table for model results
 within_improve_model_table <- rbind(within_improve_model_results$fixed %>%
                                        as.data.frame() %>% 
                                        rownames_to_column(var = "Predictor"), 
@@ -1110,6 +1090,8 @@ improve_by_dv_graph <- within_alldvs_improve %>%
 
 improve_by_dv_graph 
   
+#### supplementary info about guessing model ####
+
 # exploration of guessing %>%
 wide_data %>%
   group_by(guessed_right) %>%
@@ -1222,7 +1204,7 @@ guessed_by_dv_graph <- posteriors_by_guessing %>%
 guessed_by_dv_graph
 
 
-##### full model report for between subjects ML model
+#### full model report for between subjects ML model ####
 
 # table of model results
 btw_mlm_slopes_results <- summary(between_model_mlm_slopes)
@@ -1326,4 +1308,31 @@ btw_mlm_slopes_dv_posteriors <- posteriors_btw_mlm %>%
   )
 
 gtsave(btw_mlm_slopes_dv_posteriors, 'btw_mlm_slopes_dv_posteriors.rtf')
+
+# comparison of posterios for btw subjs individual and all DVs
+
+## create graph comparing posteriors across models for each DV
+compare_btw_DV_models_graph <- rbind(btw_posteriors_individual_dvs,
+                                     posteriors_btw_mlm %>%
+                                       mutate(model = 'All DVs') %>%
+                                       rename(dv = "DV") %>%
+                                       select(-article_type) %>%
+                                       ungroup()) %>%
+  as.data.frame() %>%
+  mutate(dv = fct_rev(dv)) %>%
+  rename(Model = 'model') %>%
+  ggplot(aes(y = dv, x = article_effect, xmin = .lower, xmax = .upper, color = Model)) +
+  geom_pointinterval(position=position_dodge(width=0.75)) +
+  geom_vline(xintercept = 0) +
+  scale_x_continuous(breaks=seq(-.5, 1.5, .5),
+                     limits = c(-.5, 1.5),
+                     name = 'Difference between RR and non-RR articles') +
+  theme_minimal() +
+  theme(axis.title.y = element_blank(),
+        axis.title.x = element_text(size = 14),
+        axis.text = element_text(size = 14),
+        panel.grid.minor.y = element_blank(),
+        strip.text = element_text(size=14))
+
+compare_btw_DV_models_graph
   
