@@ -198,8 +198,8 @@ compare_within_keyword_models <- rbind(within_posteriors_pooled_keywords,
   ggplot(aes(y = dv, x = article_effect, xmin = .lower, xmax = .upper, color = Model)) +
   geom_pointinterval(position=position_dodge(width=0.85)) +
   geom_vline(xintercept = 0) +
-  scale_x_continuous(breaks=seq(-1, 1.5, .5),
-                     limits = c(-1, 1.75),
+  scale_x_continuous(breaks=seq(-1, 2, .5),
+                     limits = c(-1, 2),
                      name = 'Difference between RR and non-RR articles') +
   theme_minimal() +
   theme(axis.title.y = element_blank(),
