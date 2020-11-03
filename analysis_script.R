@@ -98,37 +98,46 @@ priors <- c(set_prior("normal(0,2", "Intercept"),
 #### functions for within models ####
 
 # set up function to run within difference pooled models on all dvs
-within_diff_pooled_model <- function(dv, set_priors) {
+within_diff_pooled_model <- function(dv, seed_num) {
   within_model_diffs <- brm(as.formula(paste(dv, "~ Field + keyword_batch_comp + Order + Match +
                                                     Order*Match +
                                                     (1|RR)")),
                             data = wide_data,
-                            prior = set_priors, 
+                            prior = priors, 
                             family = 'gaussian',
+                            iter = 6000,
+                            seed = seed_num,
+                            control = list(adapt_delta = 0.95),
                             chains = 4)
   return(within_model_diffs)
 }
 
 # set up function to run within difference model on all dvs for those in first batch
-within_diff_keywords1_model <- function(dv, set_priors) {
+within_diff_keywords1_model <- function(dv, seed_num) {
   within_model_keywords1 <- brm(as.formula(paste(dv, "~ Field + Order + Match +
                                                     Order*Match +
                                                     (1|RR)")),
                             data = wide_data %>% filter(keyword_batch_comp == 1),
-                            prior = set_priors, 
+                            prior = priors, 
                             family = 'gaussian',
+                            iter = 6000,
+                            seed = seed_num,
+                            control = list(adapt_delta = 0.95),
                             chains = 4)
   return(within_model_keywords1)
 }
 
 # set up function to run within difference model on all dvs for those in 2+3 batch
-within_diff_keywords2_model <- function(dv, set_priors) {
+within_diff_keywords2_model <- function(dv, seed_num) {
   within_model_keywords2 <- brm(as.formula(paste(dv, "~ Field + Order + Match +
                                                     Order*Match +
                                                     (1|RR)")),
                                 data = wide_data %>% filter(keyword_batch_comp == 2),
                                 prior = set_priors, 
                                 family = 'gaussian',
+                                iter = 6000,
+                                seed = seed_num,
+                                control = list(adapt_delta = 0.95),
                                 chains = 4)
   return(within_model_keywords2)
 }
@@ -144,11 +153,23 @@ create_posteriors_term <- function(results, variable, term){
 }
 
 # Set up which model/prior/dv combinations to run
-within_models <- crossing(dv = names(wide_data[,68:86]),
-                    set_priors = c(list(priors))) %>%
-  mutate(within_pooled_model_results = pmap(list(dv, set_priors), within_diff_pooled_model)) %>%
-  mutate(posteriors = pmap(list(within_pooled_model_results, variable = dv, term = 'b_Intercept'), create_posteriors_term))
+within_models <- cbind(dv = names(wide_data[,68:86]),
+                    seed_num = c(501:519)) %>%
+  as_tibble() %>%
+  mutate(seed_num = as.numeric(seed_num)) %>%
+  mutate(within_pooled_model_results = pmap(list(dv, seed_num), within_diff_pooled_model))
 
+within_models_keywords_1 <- cbind(dv = names(wide_data[,68:86]),
+                                   seed_num = c(601:619)) %>%
+  as_tibble() %>%
+  mutate(seed_num = as.numeric(seed_num)) %>%
+  mutate(within_pooled_model_results = pmap(list(dv, seed_num), within_diff_pooled_model))
+
+within_models_keywords_23 <- cbind(dv = names(wide_data[,68:86]),
+                                    seed_num = c(701:719)) %>%
+  as_tibble() %>%
+  mutate(seed_num = as.numeric(seed_num)) %>%
+  mutate(within_pooled_model_results = pmap(list(dv, seed_num), within_diff_pooled_model))
 
 # get all intercepts into wide format for graphing
 intercepts <- c()
