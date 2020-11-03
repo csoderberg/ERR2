@@ -164,126 +164,7 @@ mcmc_intervals(intercepts, prob = .95)
 
 
 
-#### functions for between subjects models ####
 
-# between-subjects models comparing pooled, batch 1, batch 2 + 3
-between_pooled_model <- function(dv, seed_num) {
-  between_model <- brm(response ~ Field + keyword_batch_comp + article_type + Match + article_type*Match +
-                         (article_type|RR),
-                       data = long_data %>% filter(grepl(as.character(dv), question)) %>% filter((Order == 'RRFirst' & article_type == 'RR') | (Order == 'RRSecond' & article_type == 'nonRR')),
-                       prior = priors,
-                       family = 'gaussian',
-                       iter = 6000,
-                       seed = seed_num,
-                       control = list(adapt_delta = 0.95),
-                       chains = 4)
-  return(between_model)
-  }
-
-
-# between-subjects model for batch 1
-between_keywords1_model <- function(dv, seed_num) {
-  between_keywords1 <- brm(response ~ Field + article_type + Match + article_type*Match +
-                                   (article_type|RR),
-                                 data = long_data %>% 
-                                   filter(keyword_batch_comp == 1) %>%
-                                   filter(grepl(as.character(dv), question)) %>% 
-                                   filter((Order == 'RRFirst' & article_type == 'RR') | (Order == 'RRSecond' & article_type == 'nonRR')),
-                                 prior = priors,
-                                 family = 'gaussian',
-                                 iter = 6000,
-                                 seed = seed_num,
-                                 control = list(adapt_delta = 0.95),
-                                 chains = 4)
-  return(between_keywords1)
-}
-
-between_models_keywords1 <- cbind(dv = long_data %>% select(question) %>% distinct(question) %>% pull(question),
-                                  seed_num = c(201:219)) %>%
-                              as_tibble() %>%
-                              mutate(seed_num = as.numeric(seed_num)) %>%
-                              mutate(between_pooled_model_results = pmap(list(dv, seed_num), between_keywords1_model))
-
-# differenc score model for batched 2+3
-between_keywords2_model <- function(dv, seed_num) {
-  between_keywords2 <- brm(response ~ Field + article_type + Match + article_type*Match +
-                                   (article_type|RR),
-                                 data = long_data %>% 
-                                   filter(keyword_batch_comp == 2) %>%
-                                   filter(grepl(as.character(dv), question)) %>% 
-                                   filter((Order == 'RRFirst' & article_type == 'RR') | (Order == 'RRSecond' & article_type == 'nonRR')),
-                                 prior = priors,
-                                 family = 'gaussian',
-                                 iter = 6000,
-                                 seed = seed_num,
-                                 control = list(adapt_delta = 0.99),
-                                 chains = 4)
-}
-
-between_models_keywords2 <- cbind(dv = long_data %>% select(question) %>% distinct(question) %>% pull(question),
-                                  seed_num = c(301:319)) %>%
-                              as_tibble() %>%
-                              mutate(seed_num = as.numeric(seed_num)) %>%
-                              as_tibble() %>%
-                              mutate(seed_num = as.numeric(seed_num)) %>%
-                              mutate(between_pooled_model_results = pmap(list(dv, seed_num), between_keywords2_model))
-
-# Set up which run all btw subj individual dv models
-between_models <- cbind(dv = long_data %>% select(question) %>% distinct(question) %>% pull(question),
-                          seed_num = c(101:119)) %>%
-  as_tibble() %>%
-  mutate(seed_num = as.numeric(seed_num)) %>%
-  mutate(between_pooled_model_results = pmap(list(dv, seed_num), between_pooled_model))
-
-# create function to get posteriors for individual models
-btw_posteriors <- function(results) {
-  results %>%
-    spread_draws(b_article_type2) %>%
-    mean_qi(article_effect = b_article_type2, .width = c(.95, .80))
-}
-
-#get and save posteriors for each dv
-btw_posteriors_individual_dvs <- between_models %>%
-  mutate(posteriors = map(between_pooled_model_results, btw_posteriors)) %>%
-  unnest(posteriors) %>%
-  select(-c(seed_num, between_pooled_model_results)) %>%
-  mutate(model = 'Individual DVs')
-
-btw_posteriors_keyowrd1 <- between_models_keywords1  %>%
-  mutate(posteriors = map(between_pooled_model_results, btw_posteriors)) %>%
-  unnest(posteriors) %>%
-  select(-c(seed_num, between_pooled_model_results)) %>%
-  mutate(model = 'Initial Keywords')
-
-btw_posteriors_keyword2 <- between_models_keywords2  %>%
-  mutate(posteriors = map(between_pooled_model_results, btw_posteriors)) %>%
-  unnest(posteriors) %>%
-  select(-c(seed_num, between_pooled_model_results)) %>%
-  mutate(model = 'Reduced Keywords')
-
-### create graph comparing individual DV btw subjs keyword models
-compare_btw_keyword_models <- rbind(btw_posteriors_individual_dvs,
-                                    btw_posteriors_keyowrd1,
-                                    btw_posteriors_keyword2) %>%
-                                as.data.frame() %>%
-                                mutate(dv = fct_rev(dv)) %>%
-                                mutate(model = case_when(model == 'Individual DVs' ~ 'Pooled Keywords',
-                                                         TRUE ~ model)) %>%
-                                rename(Model = 'model') %>%
-                                ggplot(aes(y = dv, x = article_effect, xmin = .lower, xmax = .upper, color = Model)) +
-                                geom_pointinterval(position=position_dodge(width=0.85)) +
-                                geom_vline(xintercept = 0) +
-                                scale_x_continuous(breaks=seq(-1, 1.5, .5),
-                                                   limits = c(-1, 1.75),
-                                                   name = 'Difference between RR and non-RR articles') +
-                                theme_minimal() +
-                                theme(axis.title.y = element_blank(),
-                                      axis.title.x = element_text(size = 14),
-                                      axis.text = element_text(size = 14),
-                                      panel.grid.minor.y = element_blank(),
-                                      strip.text = element_text(size=14))
-
-compare_btw_keyword_models
 
 
 
@@ -481,7 +362,7 @@ for_descriptive %>%
 
 #### Exploratory Analyses ####
 
-### within model with DVs as ML component
+#### within model with DVs as ML component ####
 mlm_dvs_data <- wide_data %>%
   select(starts_with('diff'), participant_id, RR, Field, keyword_batch_comp, Order, Match, improve_6L, familiar_5L, guessed_right) %>%
   pivot_longer(cols = starts_with('diff'), names_to = 'questions', values_to = 'response') %>%
@@ -614,7 +495,7 @@ rbind(within_models %>%
   theme_classic()
   
 
-### Btw subjects model with DV as ML
+#### Btw subjects model with DV as ML ####
 between_model_mlm <- brm(response ~ Field + keyword_batch_comp + article_type + Match + article_type*Match +
                        (1|RR) + (1|question) + (1|participant_id),
                      data = long_data %>% filter((Order == 'RRFirst' & article_type == 'RR') | (Order == 'RRSecond' & article_type == 'nonRR')),
@@ -646,6 +527,9 @@ posteriors_btw_mlm %>%
   ungroup() %>%
   filter(.width == 0.95) %>%
   summarize(mean = round(mean(article_effect),2), min = round(min(article_effect),2), max = round(max(article_effect),2))
+
+
+#### Exploratory Models (improve, familiar, guessing) ####
 
 # partial pooling across all DVs and improve
 
@@ -715,7 +599,7 @@ within_alldvs_familiar %>%
   geom_vline(xintercept = 0) +
   theme_classic()
 
-#### model for guessing (random slope for guessing by question) ####
+## model for guessing (random slope for guessing by question) ##
 within_diff_pooled_guessed_model_slopes <- brm(response ~ Field + keyword_batch_comp + guessed_right +
                                           Order + Match + Order*Match +
                                           (1|RR) + (1|participant_id) + (guessed_right|questions),
@@ -1203,6 +1087,128 @@ guessed_by_dv_graph <- posteriors_by_guessing %>%
 
 guessed_by_dv_graph
 
+#### models and comparison graphs for between subjects individual DV models ####
+
+#### functions for between subjects models ####
+
+# between-subjects models comparing pooled, batch 1, batch 2 + 3
+between_pooled_model <- function(dv, seed_num) {
+  between_model <- brm(response ~ Field + keyword_batch_comp + article_type + Match + article_type*Match +
+                         (article_type|RR),
+                       data = long_data %>% filter(grepl(as.character(dv), question)) %>% filter((Order == 'RRFirst' & article_type == 'RR') | (Order == 'RRSecond' & article_type == 'nonRR')),
+                       prior = priors,
+                       family = 'gaussian',
+                       iter = 6000,
+                       seed = seed_num,
+                       control = list(adapt_delta = 0.95),
+                       chains = 4)
+  return(between_model)
+}
+
+
+# between-subjects model for batch 1
+between_keywords1_model <- function(dv, seed_num) {
+  between_keywords1 <- brm(response ~ Field + article_type + Match + article_type*Match +
+                             (article_type|RR),
+                           data = long_data %>% 
+                             filter(keyword_batch_comp == 1) %>%
+                             filter(grepl(as.character(dv), question)) %>% 
+                             filter((Order == 'RRFirst' & article_type == 'RR') | (Order == 'RRSecond' & article_type == 'nonRR')),
+                           prior = priors,
+                           family = 'gaussian',
+                           iter = 6000,
+                           seed = seed_num,
+                           control = list(adapt_delta = 0.95),
+                           chains = 4)
+  return(between_keywords1)
+}
+
+between_models_keywords1 <- cbind(dv = long_data %>% select(question) %>% distinct(question) %>% pull(question),
+                                  seed_num = c(201:219)) %>%
+  as_tibble() %>%
+  mutate(seed_num = as.numeric(seed_num)) %>%
+  mutate(between_pooled_model_results = pmap(list(dv, seed_num), between_keywords1_model))
+
+# differenc score model for batched 2+3
+between_keywords2_model <- function(dv, seed_num) {
+  between_keywords2 <- brm(response ~ Field + article_type + Match + article_type*Match +
+                             (article_type|RR),
+                           data = long_data %>% 
+                             filter(keyword_batch_comp == 2) %>%
+                             filter(grepl(as.character(dv), question)) %>% 
+                             filter((Order == 'RRFirst' & article_type == 'RR') | (Order == 'RRSecond' & article_type == 'nonRR')),
+                           prior = priors,
+                           family = 'gaussian',
+                           iter = 6000,
+                           seed = seed_num,
+                           control = list(adapt_delta = 0.99),
+                           chains = 4)
+}
+
+between_models_keywords2 <- cbind(dv = long_data %>% select(question) %>% distinct(question) %>% pull(question),
+                                  seed_num = c(301:319)) %>%
+  as_tibble() %>%
+  mutate(seed_num = as.numeric(seed_num)) %>%
+  as_tibble() %>%
+  mutate(seed_num = as.numeric(seed_num)) %>%
+  mutate(between_pooled_model_results = pmap(list(dv, seed_num), between_keywords2_model))
+
+# Set up which run all btw subj individual dv models
+between_models <- cbind(dv = long_data %>% select(question) %>% distinct(question) %>% pull(question),
+                        seed_num = c(101:119)) %>%
+  as_tibble() %>%
+  mutate(seed_num = as.numeric(seed_num)) %>%
+  mutate(between_pooled_model_results = pmap(list(dv, seed_num), between_pooled_model))
+
+# create function to get posteriors for individual models
+btw_posteriors <- function(results) {
+  results %>%
+    spread_draws(b_article_type2) %>%
+    mean_qi(article_effect = b_article_type2, .width = c(.95, .80))
+}
+
+#get and save posteriors for each dv
+btw_posteriors_individual_dvs <- between_models %>%
+  mutate(posteriors = map(between_pooled_model_results, btw_posteriors)) %>%
+  unnest(posteriors) %>%
+  select(-c(seed_num, between_pooled_model_results)) %>%
+  mutate(model = 'Individual DVs')
+
+btw_posteriors_keyowrd1 <- between_models_keywords1  %>%
+  mutate(posteriors = map(between_pooled_model_results, btw_posteriors)) %>%
+  unnest(posteriors) %>%
+  select(-c(seed_num, between_pooled_model_results)) %>%
+  mutate(model = 'Initial Keywords')
+
+btw_posteriors_keyword2 <- between_models_keywords2  %>%
+  mutate(posteriors = map(between_pooled_model_results, btw_posteriors)) %>%
+  unnest(posteriors) %>%
+  select(-c(seed_num, between_pooled_model_results)) %>%
+  mutate(model = 'Reduced Keywords')
+
+### create graph comparing individual DV btw subjs keyword models
+compare_btw_keyword_models <- rbind(btw_posteriors_individual_dvs,
+                                    btw_posteriors_keyowrd1,
+                                    btw_posteriors_keyword2) %>%
+  as.data.frame() %>%
+  mutate(dv = fct_rev(dv)) %>%
+  mutate(model = case_when(model == 'Individual DVs' ~ 'Pooled Keywords',
+                           TRUE ~ model)) %>%
+  rename(Model = 'model') %>%
+  ggplot(aes(y = dv, x = article_effect, xmin = .lower, xmax = .upper, color = Model)) +
+  geom_pointinterval(position=position_dodge(width=0.85)) +
+  geom_vline(xintercept = 0) +
+  scale_x_continuous(breaks=seq(-1, 1.5, .5),
+                     limits = c(-1, 1.75),
+                     name = 'Difference between RR and non-RR articles') +
+  theme_minimal() +
+  theme(axis.title.y = element_blank(),
+        axis.title.x = element_text(size = 14),
+        axis.text = element_text(size = 14),
+        panel.grid.minor.y = element_blank(),
+        strip.text = element_text(size=14))
+
+compare_btw_keyword_models
 
 #### full model report for between subjects ML model ####
 
