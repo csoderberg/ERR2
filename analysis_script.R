@@ -95,120 +95,7 @@ priors <- c(set_prior("normal(0,2", "Intercept"),
             set_prior("normal(0, 2.5)", "sd"),
             set_prior("normal(0, 2)", "sigma"))
 
-#### functions for within models ####
 
-# set up function to run within difference pooled models on all dvs
-within_diff_pooled_model <- function(dv, seed_num) {
-  within_model_diffs <- brm(as.formula(paste(dv, "~ Field + keyword_batch_comp + Order + Match +
-                                                    Order*Match +
-                                                    (1|RR)")),
-                            data = wide_data,
-                            prior = priors, 
-                            family = 'gaussian',
-                            iter = 6000,
-                            seed = seed_num,
-                            control = list(adapt_delta = 0.95),
-                            chains = 4)
-  return(within_model_diffs)
-}
-
-# set up function to run within difference model on all dvs for those in first batch
-within_diff_keywords1_model <- function(dv, seed_num) {
-  within_model_keywords1 <- brm(as.formula(paste(dv, "~ Field + Order + Match +
-                                                    Order*Match +
-                                                    (1|RR)")),
-                            data = wide_data %>% filter(keyword_batch_comp == 1),
-                            prior = priors, 
-                            family = 'gaussian',
-                            iter = 6000,
-                            seed = seed_num,
-                            control = list(adapt_delta = 0.95),
-                            chains = 4)
-  return(within_model_keywords1)
-}
-
-# set up function to run within difference model on all dvs for those in 2+3 batch
-within_diff_keywords2_model <- function(dv, seed_num) {
-  within_model_keywords2 <- brm(as.formula(paste(dv, "~ Field + Order + Match +
-                                                    Order*Match +
-                                                    (1|RR)")),
-                                data = wide_data %>% filter(keyword_batch_comp == 2),
-                                prior = priors, 
-                                family = 'gaussian',
-                                iter = 6000,
-                                seed = seed_num,
-                                control = list(adapt_delta = 0.95),
-                                chains = 4)
-  return(within_model_keywords2)
-}
-
-# create function to get posteriors for individual models
-within_posteriors <- function(results) {
-  results %>%
-    spread_draws(b_Intercept) %>%
-    mean_qi(article_effect = b_Intercept, .width = c(.95, .80))
-}
-
-# Set up which model/prior/dv combinations to run
-within_models <- cbind(dv = names(wide_data[,68:86]),
-                    seed_num = c(501:519)) %>%
-  as_tibble() %>%
-  mutate(seed_num = as.numeric(seed_num)) %>%
-  mutate(within_pooled_model_results = pmap(list(dv, seed_num), within_diff_pooled_model))
-
-within_models_keywords_1 <- cbind(dv = names(wide_data[,68:86]),
-                                   seed_num = c(601:619)) %>%
-  as_tibble() %>%
-  mutate(seed_num = as.numeric(seed_num)) %>%
-  mutate(within_pooled_model_results = pmap(list(dv, seed_num), within_diff_keywords1_model))
-
-within_models_keywords_23 <- cbind(dv = names(wide_data[,68:86]),
-                                    seed_num = c(701:719)) %>%
-  as_tibble() %>%
-  mutate(seed_num = as.numeric(seed_num)) %>%
-  mutate(within_pooled_model_results = pmap(list(dv, seed_num), within_diff_keywords2_model))
-
-
-#get and save posteriors for each dv
-within_posteriors_pooled_keywords <- within_models %>%
-  mutate(posteriors = map(within_pooled_model_results, within_posteriors)) %>%
-  unnest(posteriors) %>%
-  select(-c(seed_num, within_pooled_model_results)) %>%
-  mutate(model = 'Pooled Keywords')
-
-within_posteriors_keyword1 <- within_models_keywords_1 %>%
-  mutate(posteriors = map(within_pooled_model_results, within_posteriors)) %>%
-  unnest(posteriors) %>%
-  select(-c(seed_num, within_pooled_model_results)) %>%
-  mutate(model = 'Initial Keywords')
-
-within_posteriors_keyword23 <- within_models_keywords_23 %>%
-  mutate(posteriors = map(within_pooled_model_results, within_posteriors)) %>%
-  unnest(posteriors) %>%
-  select(-c(seed_num, within_pooled_model_results)) %>%
-  mutate(model = 'Reduced Keywords')
-
-### create graph comparing individual DV within subjs keyword models
-compare_within_keyword_models <- rbind(within_posteriors_pooled_keywords,
-                                       within_posteriors_keyword1,
-                                       within_posteriors_keyword23) %>%
-  as.data.frame() %>%
-  mutate(dv = fct_rev(dv)) %>%
-  rename(Model = 'model') %>%
-  ggplot(aes(y = dv, x = article_effect, xmin = .lower, xmax = .upper, color = Model)) +
-  geom_pointinterval(position=position_dodge(width=0.85)) +
-  geom_vline(xintercept = 0) +
-  scale_x_continuous(breaks=seq(-1, 2, .5),
-                     limits = c(-1, 2),
-                     name = 'Difference between RR and non-RR articles') +
-  theme_minimal() +
-  theme(axis.title.y = element_blank(),
-        axis.title.x = element_text(size = 14),
-        axis.text = element_text(size = 14),
-        panel.grid.minor.y = element_blank(),
-        strip.text = element_text(size=14))
-
-compare_within_keyword_models
 
 
 # get all intercepts into wide format for graphing
@@ -1402,4 +1289,119 @@ compare_btw_DV_models_graph <- rbind(btw_posteriors_individual_dvs,
         strip.text = element_text(size=14))
 
 compare_btw_DV_models_graph
+
+#### functions for within models ####
+
+# set up function to run within difference pooled models on all dvs
+within_diff_pooled_model <- function(dv, seed_num) {
+  within_model_diffs <- brm(as.formula(paste(dv, "~ Field + keyword_batch_comp + Order + Match +
+                                                    Order*Match +
+                                                    (1|RR)")),
+                            data = wide_data,
+                            prior = priors, 
+                            family = 'gaussian',
+                            iter = 6000,
+                            seed = seed_num,
+                            control = list(adapt_delta = 0.95),
+                            chains = 4)
+  return(within_model_diffs)
+}
+
+# set up function to run within difference model on all dvs for those in first batch
+within_diff_keywords1_model <- function(dv, seed_num) {
+  within_model_keywords1 <- brm(as.formula(paste(dv, "~ Field + Order + Match +
+                                                    Order*Match +
+                                                    (1|RR)")),
+                                data = wide_data %>% filter(keyword_batch_comp == 1),
+                                prior = priors, 
+                                family = 'gaussian',
+                                iter = 6000,
+                                seed = seed_num,
+                                control = list(adapt_delta = 0.95),
+                                chains = 4)
+  return(within_model_keywords1)
+}
+
+# set up function to run within difference model on all dvs for those in 2+3 batch
+within_diff_keywords2_model <- function(dv, seed_num) {
+  within_model_keywords2 <- brm(as.formula(paste(dv, "~ Field + Order + Match +
+                                                    Order*Match +
+                                                    (1|RR)")),
+                                data = wide_data %>% filter(keyword_batch_comp == 2),
+                                prior = priors, 
+                                family = 'gaussian',
+                                iter = 6000,
+                                seed = seed_num,
+                                control = list(adapt_delta = 0.95),
+                                chains = 4)
+  return(within_model_keywords2)
+}
+
+# create function to get posteriors for individual models
+within_posteriors <- function(results) {
+  results %>%
+    spread_draws(b_Intercept) %>%
+    mean_qi(article_effect = b_Intercept, .width = c(.95, .80))
+}
+
+# Set up which model/prior/dv combinations to run
+within_models <- cbind(dv = names(wide_data[,68:86]),
+                       seed_num = c(501:519)) %>%
+  as_tibble() %>%
+  mutate(seed_num = as.numeric(seed_num)) %>%
+  mutate(within_pooled_model_results = pmap(list(dv, seed_num), within_diff_pooled_model))
+
+within_models_keywords_1 <- cbind(dv = names(wide_data[,68:86]),
+                                  seed_num = c(601:619)) %>%
+  as_tibble() %>%
+  mutate(seed_num = as.numeric(seed_num)) %>%
+  mutate(within_pooled_model_results = pmap(list(dv, seed_num), within_diff_keywords1_model))
+
+within_models_keywords_23 <- cbind(dv = names(wide_data[,68:86]),
+                                   seed_num = c(701:719)) %>%
+  as_tibble() %>%
+  mutate(seed_num = as.numeric(seed_num)) %>%
+  mutate(within_pooled_model_results = pmap(list(dv, seed_num), within_diff_keywords2_model))
+
+
+#get and save posteriors for each dv
+within_posteriors_pooled_keywords <- within_models %>%
+  mutate(posteriors = map(within_pooled_model_results, within_posteriors)) %>%
+  unnest(posteriors) %>%
+  select(-c(seed_num, within_pooled_model_results)) %>%
+  mutate(model = 'Pooled Keywords')
+
+within_posteriors_keyword1 <- within_models_keywords_1 %>%
+  mutate(posteriors = map(within_pooled_model_results, within_posteriors)) %>%
+  unnest(posteriors) %>%
+  select(-c(seed_num, within_pooled_model_results)) %>%
+  mutate(model = 'Initial Keywords')
+
+within_posteriors_keyword23 <- within_models_keywords_23 %>%
+  mutate(posteriors = map(within_pooled_model_results, within_posteriors)) %>%
+  unnest(posteriors) %>%
+  select(-c(seed_num, within_pooled_model_results)) %>%
+  mutate(model = 'Reduced Keywords')
+
+### create graph comparing individual DV within subjs keyword models
+compare_within_keyword_models <- rbind(within_posteriors_pooled_keywords,
+                                       within_posteriors_keyword1,
+                                       within_posteriors_keyword23) %>%
+  as.data.frame() %>%
+  mutate(dv = fct_rev(dv)) %>%
+  rename(Model = 'model') %>%
+  ggplot(aes(y = dv, x = article_effect, xmin = .lower, xmax = .upper, color = Model)) +
+  geom_pointinterval(position=position_dodge(width=0.85)) +
+  geom_vline(xintercept = 0) +
+  scale_x_continuous(breaks=seq(-1, 2, .5),
+                     limits = c(-1, 2),
+                     name = 'Difference between RR and non-RR articles') +
+  theme_minimal() +
+  theme(axis.title.y = element_blank(),
+        axis.title.x = element_text(size = 14),
+        axis.text = element_text(size = 14),
+        panel.grid.minor.y = element_blank(),
+        strip.text = element_text(size=14))
+
+compare_within_keyword_models
   
