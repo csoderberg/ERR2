@@ -133,7 +133,7 @@ within_diff_keywords2_model <- function(dv, seed_num) {
                                                     Order*Match +
                                                     (1|RR)")),
                                 data = wide_data %>% filter(keyword_batch_comp == 2),
-                                prior = set_priors, 
+                                prior = priors, 
                                 family = 'gaussian',
                                 iter = 6000,
                                 seed = seed_num,
@@ -142,14 +142,11 @@ within_diff_keywords2_model <- function(dv, seed_num) {
   return(within_model_keywords2)
 }
 
-
-# create more flexible version of posteriors function
-create_posteriors_term <- function(results, variable, term){
-  posteriors <- list(posterior_samples(results) %>%
-                       select(term) %>%
-                       rename(setNames(term, variable)))
-  
-  return(posteriors)
+# create function to get posteriors for individual models
+within_posteriors <- function(results) {
+  results %>%
+    spread_draws(b_Intercept) %>%
+    mean_qi(article_effect = b_Intercept, .width = c(.95, .80))
 }
 
 # Set up which model/prior/dv combinations to run
@@ -170,6 +167,49 @@ within_models_keywords_23 <- cbind(dv = names(wide_data[,68:86]),
   as_tibble() %>%
   mutate(seed_num = as.numeric(seed_num)) %>%
   mutate(within_pooled_model_results = pmap(list(dv, seed_num), within_diff_keywords2_model))
+
+
+#get and save posteriors for each dv
+within_posteriors_pooled_keywords <- within_models %>%
+  mutate(posteriors = map(within_pooled_model_results, within_posteriors)) %>%
+  unnest(posteriors) %>%
+  select(-c(seed_num, within_pooled_model_results)) %>%
+  mutate(model = 'Pooled Keywords')
+
+within_posteriors_keyword1 <- within_models_keywords_1 %>%
+  mutate(posteriors = map(within_pooled_model_results, within_posteriors)) %>%
+  unnest(posteriors) %>%
+  select(-c(seed_num, within_pooled_model_results)) %>%
+  mutate(model = 'Initial Keywords')
+
+within_posteriors_keyword23 <- within_models_keywords_23 %>%
+  mutate(posteriors = map(within_pooled_model_results, within_posteriors)) %>%
+  unnest(posteriors) %>%
+  select(-c(seed_num, within_pooled_model_results)) %>%
+  mutate(model = 'Reduced Keywords')
+
+### create graph comparing individual DV within subjs keyword models
+compare_within_keyword_models <- rbind(within_posteriors_pooled_keywords,
+                                       within_posteriors_keyword1,
+                                       within_posteriors_keyword23) %>%
+  as.data.frame() %>%
+  mutate(dv = fct_rev(dv)) %>%
+  rename(Model = 'model') %>%
+  ggplot(aes(y = dv, x = article_effect, xmin = .lower, xmax = .upper, color = Model)) +
+  geom_pointinterval(position=position_dodge(width=0.85)) +
+  geom_vline(xintercept = 0) +
+  scale_x_continuous(breaks=seq(-1, 1.5, .5),
+                     limits = c(-1, 1.75),
+                     name = 'Difference between RR and non-RR articles') +
+  theme_minimal() +
+  theme(axis.title.y = element_blank(),
+        axis.title.x = element_text(size = 14),
+        axis.text = element_text(size = 14),
+        panel.grid.minor.y = element_blank(),
+        strip.text = element_text(size=14))
+
+compare_within_keyword_models
+
 
 # get all intercepts into wide format for graphing
 intercepts <- c()
