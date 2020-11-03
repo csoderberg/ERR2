@@ -163,13 +163,13 @@ within_models_keywords_1 <- cbind(dv = names(wide_data[,68:86]),
                                    seed_num = c(601:619)) %>%
   as_tibble() %>%
   mutate(seed_num = as.numeric(seed_num)) %>%
-  mutate(within_pooled_model_results = pmap(list(dv, seed_num), within_diff_pooled_model))
+  mutate(within_pooled_model_results = pmap(list(dv, seed_num), within_diff_keywords1_model))
 
 within_models_keywords_23 <- cbind(dv = names(wide_data[,68:86]),
                                     seed_num = c(701:719)) %>%
   as_tibble() %>%
   mutate(seed_num = as.numeric(seed_num)) %>%
-  mutate(within_pooled_model_results = pmap(list(dv, seed_num), within_diff_pooled_model))
+  mutate(within_pooled_model_results = pmap(list(dv, seed_num), within_diff_keywords2_model))
 
 # get all intercepts into wide format for graphing
 intercepts <- c()
