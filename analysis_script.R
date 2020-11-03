@@ -257,6 +257,26 @@ within_alldvs <-  brm(response ~ Field + keyword_batch_comp +
                           seed = 25,
                           control = list(adapt_delta = 0.95, max_treedepth = 15))
 
+# effect across all DVs
+within_alldvs %>%
+  spread_draws(b_Intercept) %>%
+  mean_qi(mean = b_Intercept)
+
+# effect across DVs from different paper parts
+within_alldvs %>%
+  spread_draws(b_Intercept, r_questions[dv,]) %>%
+  mean_qi(mean = b_Intercept + r_questions) %>%
+  mutate(paper_part = case_when(dv == 'diff_aligned' | dv == 'diff_will_learn' | dv == 'diff_intro_importance' |
+                                dv == 'diff_method_rigor' | dv == 'diff_method_quality' | dv == 'diff_question_quality' |
+                                dv == 'diff_method_creative' | dv == 'diff_question_novel' ~ 'intro_method',
+                                dv == "diff_analysis_rigor" | dv == "diff_overall_import" | dv == "diff_did_learn" |
+                                dv == "diff_discussion_quality" | dv == "diff_justificed" | dv == 'diff_result_innovative' |
+                                dv == 'diff_result_quality' ~ 'result',
+                                dv == 'diff_inspire' | dv == 'diff_abstract_aligned' | dv == 'diff_field_importance' |
+                                dv == "diff_overall_quality" ~ 'overall')) %>%
+  group_by(paper_part) %>%
+  summarize(mean_dv = mean(mean), min = min(mean), max = max(mean))
+  
 
 # main figure for RR vs. non-RR difference across DVs with partial pooling
 with_alldvs_graph_nums <- within_alldvs %>%
@@ -354,24 +374,6 @@ abstract_qs <- with_alldvs_graph_nums %>%
 combined_plot <- intro_qs / results_qs / abstract_qs + plot_layout(heights = c(8, 7, 4))
 combined_plot
 
-
-### compare model estimates from hierarchical and non-hierarchical DV models
-rbind(within_models %>% 
-  mutate(draws = map(within_pooled_model_results, spread_draws, b_Intercept),
-         posterior_info = map(draws, median_qi, .width = c(.95, .90))) %>%
-  select(dv, posterior_info) %>%
-  unnest(posterior_info) %>%
-  rename(question_mean = b_Intercept) %>%
-  mutate(model = 'no dv pooling'),
-  within_alldvs %>%
-    spread_draws(b_Intercept, r_questions[dv,]) %>%
-    median_qi(question_mean = b_Intercept + r_questions, .width = c(.95, .90)) %>%
-    mutate(model = 'partial dv pooling')) %>%
-  ggplot(aes(y = dv, x = question_mean, xmin = .lower, xmax = .upper, color = model)) +
-  geom_pointinterval(position=position_dodge(width=0.5)) +
-  geom_vline(xintercept = 0) +
-  theme_classic()
-  
 
 #### Btw subjects model with DV as ML ####
 between_model_mlm <- brm(response ~ Field + keyword_batch_comp + article_type + Match + article_type*Match +
@@ -1334,4 +1336,28 @@ compare_within_keyword_models <- rbind(within_posteriors_pooled_keywords,
         strip.text = element_text(size=14))
 
 compare_within_keyword_models
-  
+
+### compare model estimates from hierarchical and non-hierarchical DV models
+rbind(within_models %>% 
+        mutate(draws = map(within_pooled_model_results, spread_draws, b_Intercept),
+               posterior_info = map(draws, mean_qi, .width = c(.95, .80))) %>%
+        select(dv, posterior_info) %>%
+        unnest(posterior_info) %>%
+        rename(question_mean = b_Intercept) %>%
+        mutate(Model = 'No DV pooling'),
+      within_alldvs %>%
+        spread_draws(b_Intercept, r_questions[dv,]) %>%
+        mean_qi(question_mean = b_Intercept + r_questions, .width = c(.95, .80)) %>%
+        mutate(Model = 'Partial DV pooling')) %>%
+  ggplot(aes(y = dv, x = question_mean, xmin = .lower, xmax = .upper, color = Model)) +
+  geom_pointinterval(position=position_dodge(width=0.5)) +
+  geom_vline(xintercept = 0) +
+  scale_x_continuous(breaks=seq(-0.5, 1.5, .5),
+                     limits = c(-0.5, 1.75),
+                     name = 'Difference between RR and non-RR articles') +
+  theme_minimal() +
+  theme(axis.title.y = element_blank(),
+        axis.title.x = element_text(size = 14),
+        axis.text = element_text(size = 14),
+        panel.grid.minor.y = element_blank(),
+        strip.text = element_text(size=14))
