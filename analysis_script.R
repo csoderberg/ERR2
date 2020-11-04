@@ -1361,3 +1361,60 @@ rbind(within_models %>%
         axis.text = element_text(size = 14),
         panel.grid.minor.y = element_blank(),
         strip.text = element_text(size=14))
+
+
+#### supplemental table for N per RR pair ####
+n_per_article <- wide_data %>%
+  select(starts_with('diff'), RR) %>%
+  mutate(skipped = rowSums(is.na(.))) %>%
+  filter(skipped < 19) %>%
+  group_by(RR) %>%
+  tally()
+
+# descriptives fro N per article
+n_per_article %>%
+  summarize(mean = mean(n), sd = sd(n), min = min(n), max = max(n))
+
+# table of N per article
+n_per_article_table <- n_per_article %>%
+  as.data.frame() %>%
+  arrange(desc(n)) %>%
+  gt() %>%
+  cols_label(RR = 'RR Pair',
+             n = 'N') %>%
+  cols_align(align = 'left',
+             columns = 1) %>%
+  cols_align(align = 'right',
+             columns = 2) %>%
+  tab_style(
+    style = cell_text(color = "black", weight = "bold"),
+    locations = list(
+      cells_column_labels(everything())
+    )
+  ) %>% 
+  tab_options(
+    table_body.hlines.color = "white",
+    table.border.top.color = "white",
+    table.border.top.width = px(3),
+    table.border.bottom.color = "white",
+    table.border.bottom.width = px(3),
+    column_labels.border.bottom.color = "black",
+    column_labels.border.bottom.width = px(2)
+  )
+
+gtsave(n_per_article_table, 'n_per_article_table.rtf')
+
+#### number who did at least 1 question for both
+nrow(wide_data %>%
+        select(starts_with('diff'), RR) %>%
+        mutate(skipped = rowSums(is.na(.))) %>%
+        filter(skipped < 19))
+
+### perc who completed both
+nrow(wide_data %>%
+       select(starts_with('diff'), RR) %>%
+       mutate(skipped = rowSums(is.na(.))) %>%
+       filter(skipped < 19)) /
+  nrow(wide_data %>%
+         select(starts_with('diff'), RR) %>%
+         mutate(skipped = rowSums(is.na(.))))
