@@ -530,6 +530,9 @@ dev.off()
 
 #### Model fit and summary results from within-subjects ML pooled DV model ####
 
+waic(within_alldvs)
+loo(within_alldvs)
+
 # table of results
 within_alldvs_model_results <- summary(within_alldvs) 
 
@@ -628,6 +631,9 @@ gtsave(within_alldvs_dv_posteriors, 'within_alldvs_dv_posteriors.rtf')
 
 
 #### Familiarity variable exploratory analysis supplement ####
+
+waic(within_alldvs_familiar)
+loo(within_alldvs_familiar)
 
 within_familiar_model_results <- summary(within_alldvs_familiar) 
 
@@ -747,6 +753,9 @@ familiarity_by_dv_graph
 
 #### Improve variable exploratory analysis supplement ####
 
+waic(within_alldvs_improve)
+loo(within_alldvs_improve)
+
 within_improve_model_results <- summary(within_alldvs_improve)
 
 # table for model results
@@ -862,6 +871,9 @@ wide_data %>%
   tally()
 
 # full guessing model summary table
+
+waic(within_diff_pooled_guessed_model_slopes)
+loo(within_diff_pooled_guessed_model_slopes)
 
 guessing_model_results <- summary(within_diff_pooled_guessed_model_slopes)
 
@@ -1418,3 +1430,88 @@ nrow(wide_data %>%
   nrow(wide_data %>%
          select(starts_with('diff'), RR) %>%
          mutate(skipped = rowSums(is.na(.))))
+
+
+#### alternate prior tsts ####
+
+within_alldvs_altpriors <-  function(set_prior, seed_num) {
+                               model_result <- brm(response ~ Field + keyword_batch_comp + 
+                                      Order + Match + Order*Match +
+                                      (1|RR) + (1|participant_id) + (1|questions),
+                                    data = mlm_dvs_data,
+                                    prior = set_prior,
+                                    family = 'gaussian',
+                                    chains = 4,
+                                    iter = 6000,
+                                    seed = seed_num,
+                                    control = list(adapt_delta = 0.95, max_treedepth = 15))
+                               
+                               return(model_result)
+}
+
+alt_prior1 <- priors <- c(set_prior("normal(0,10", "Intercept"),
+                          set_prior("normal(0,10)", "b"),
+                          set_prior("normal(0, 2.5)", "sd"),
+                          set_prior("normal(0, 2.5)", "sigma"))
+
+alt_prior2 <- priors <- c(set_prior("normal(0,100", "Intercept"),
+                          set_prior("normal(0,100)", "b"),
+                          set_prior("normal(0, 2.5)", "sd"),
+                          set_prior("normal(0, 2.5)", "sigma"))
+
+alt_prior3 <- priors <- c(set_prior("normal(0,100", "Intercept"),
+                          set_prior("normal(0,100)", "b"),
+                          set_prior("normal(0, 5)", "sd"),
+                          set_prior("normal(0, 5)", "sigma"))
+
+alt_prior4 <- priors <- c(set_prior("normal(-2,2", "Intercept"),
+                          set_prior("normal(-2,2)", "b"),
+                          set_prior("normal(0, 2.5)", "sd"),
+                          set_prior("normal(0, 2.5)", "sigma"))
+
+alt_model_runs <- cbind(set_prior = list(alt_prior1, alt_prior2, alt_prior3, alt_prior4),
+                        seed_num = c(1001:1004)) %>%
+  as_tibble() %>%
+  mutate(seed_num = as.numeric(seed_num)) %>%
+  mutate(within_altpriors_model_results = pmap(list(set_prior, seed_num), within_alldvs_altpriors))
+
+# create function to get posteriors for individual models
+within_dv_posteriors <- function(results) {
+  results %>%
+    spread_draws(b_Intercept, r_questions[dv,]) %>%
+    mean_qi(question_mean = b_Intercept + r_questions, .width = c(.95, .80))
+}
+
+  
+alt_model_posteriors <- alt_model_runs %>%
+  mutate(posteriors = map(within_altpriors_model_results, within_dv_posteriors)) %>%
+  unnest(posteriors) %>%
+  mutate(Model = case_when(seed_num == 1001 ~ 'Exploratory Priors 1',
+                           seed_num == 1002 ~ 'Exploratory Priors 2',
+                           seed_num == 1003 ~ 'Exploratory Priors 3',
+                           seed_num == 1004 ~ 'Exploratory Priors 4')) %>%
+  select(-c(set_prior, seed_num, within_altpriors_model_results))
+
+alt_prior_graph <- rbind(alt_model_posteriors,
+      within_alldvs %>%
+        spread_draws(b_Intercept, r_questions[dv,]) %>%
+        mean_qi(question_mean = b_Intercept + r_questions, .width = c(.95, .80)) %>%
+        mutate(Model = 'Prereg Priors')) %>%
+  mutate(dv = as.factor(dv),
+         dv = fct_rev(dv)) %>%
+  ggplot(aes(y = dv, x = question_mean, xmin = .lower, xmax = .upper, color = Model)) +
+  geom_pointinterval(position=position_dodge(width=0.85)) +
+  geom_vline(xintercept = 0) +
+  scale_x_continuous(breaks=seq(0, 1.5, .5),
+                     limits = c(-0.25, 1.5),
+                     name = 'Difference between RR and non-RR articles') +
+  theme_minimal() +
+  theme(axis.title.y = element_blank(),
+        axis.title.x = element_text(size = 16),
+        axis.text = element_text(size = 16),
+        legend.title = element_text(size = 16),
+        legend.text = element_text(size = 16),
+        panel.grid.minor.y = element_blank(),
+        strip.text = element_text(size=16))
+  
+alt_prior_graph
