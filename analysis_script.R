@@ -744,10 +744,10 @@ familiarity_by_dv_graph <- within_alldvs_familiar %>%
                      name = 'Difference between RR and non-RR articles') +
   theme_minimal() +
   theme(axis.title.y = element_blank(),
-        axis.title.x = element_text(size = 10),
-        axis.text = element_text(size = 10),
+        axis.title.x = element_text(size = 16),
+        axis.text = element_text(size = 16),
         panel.grid.minor.y = element_blank(),
-        strip.text = element_text(size=10))
+        strip.text = element_text(size=16))
 
 familiarity_by_dv_graph
 
@@ -856,10 +856,10 @@ improve_by_dv_graph <- within_alldvs_improve %>%
                      name = 'Difference between RR and non-RR articles') +
   theme_minimal() +
   theme(axis.title.y = element_blank(),
-        axis.title.x = element_text(size = 10),
-        axis.text = element_text(size = 10),
+        axis.title.x = element_text(size = 16),
+        axis.text = element_text(size = 16),
         panel.grid.minor.y = element_blank(),
-        strip.text = element_text(size=10))
+        strip.text = element_text(size=16))
 
 improve_by_dv_graph 
   
@@ -1095,10 +1095,12 @@ compare_btw_keyword_models <- rbind(btw_posteriors_individual_dvs,
                      name = 'Difference between RR and non-RR articles') +
   theme_minimal() +
   theme(axis.title.y = element_blank(),
-        axis.title.x = element_text(size = 14),
-        axis.text = element_text(size = 14),
+        axis.title.x = element_text(size = 16),
+        axis.text = element_text(size = 16),
+        legend.title = element_text(size = 16),
+        legend.text = element_text(size = 16),
         panel.grid.minor.y = element_blank(),
-        strip.text = element_text(size=14))
+        strip.text = element_text(size=16))
 
 compare_btw_keyword_models
 
@@ -1227,10 +1229,12 @@ compare_btw_DV_models_graph <- rbind(btw_posteriors_individual_dvs,
                      name = 'Difference between RR and non-RR articles') +
   theme_minimal() +
   theme(axis.title.y = element_blank(),
-        axis.title.x = element_text(size = 14),
-        axis.text = element_text(size = 14),
+        axis.title.x = element_text(size = 16),
+        axis.text = element_text(size = 16),
+        legend.title = element_text(size = 16),
+        legend.text = element_text(size = 16),
         panel.grid.minor.y = element_blank(),
-        strip.text = element_text(size=14))
+        strip.text = element_text(size=16))
 
 compare_btw_DV_models_graph
 
@@ -1342,15 +1346,17 @@ compare_within_keyword_models <- rbind(within_posteriors_pooled_keywords,
                      name = 'Difference between RR and non-RR articles') +
   theme_minimal() +
   theme(axis.title.y = element_blank(),
-        axis.title.x = element_text(size = 14),
-        axis.text = element_text(size = 14),
+        axis.title.x = element_text(size = 16),
+        axis.text = element_text(size = 16),
+        legend.title = element_text(size = 16),
+        legend.text = element_text(size = 16),
         panel.grid.minor.y = element_blank(),
-        strip.text = element_text(size=14))
+        strip.text = element_text(size=16))
 
 compare_within_keyword_models
 
 ### compare model estimates from hierarchical and non-hierarchical DV models
-rbind(within_models %>% 
+within_pooled_nonpooled_graph <- rbind(within_models %>% 
         mutate(draws = map(within_pooled_model_results, spread_draws, b_Intercept),
                posterior_info = map(draws, mean_qi, .width = c(.95, .80))) %>%
         select(dv, posterior_info) %>%
@@ -1361,6 +1367,8 @@ rbind(within_models %>%
         spread_draws(b_Intercept, r_questions[dv,]) %>%
         mean_qi(question_mean = b_Intercept + r_questions, .width = c(.95, .80)) %>%
         mutate(Model = 'Partial DV pooling')) %>%
+  mutate(dv = as.factor(dv),
+         dv = fct_rev(dv)) %>%
   ggplot(aes(y = dv, x = question_mean, xmin = .lower, xmax = .upper, color = Model)) +
   geom_pointinterval(position=position_dodge(width=0.5)) +
   geom_vline(xintercept = 0) +
@@ -1369,11 +1377,14 @@ rbind(within_models %>%
                      name = 'Difference between RR and non-RR articles') +
   theme_minimal() +
   theme(axis.title.y = element_blank(),
-        axis.title.x = element_text(size = 14),
-        axis.text = element_text(size = 14),
+        axis.title.x = element_text(size = 16),
+        axis.text = element_text(size = 16),
+        legend.title = element_text(size = 16),
+        legend.text = element_text(size = 16),
         panel.grid.minor.y = element_blank(),
-        strip.text = element_text(size=14))
+        strip.text = element_text(size=16))
 
+within_pooled_nonpooled_graph
 
 #### supplemental table for N per RR pair ####
 n_per_article <- wide_data %>%
@@ -1432,7 +1443,7 @@ nrow(wide_data %>%
          mutate(skipped = rowSums(is.na(.))))
 
 
-#### alternate prior tsts ####
+#### alternate prior tests ####
 
 within_alldvs_altpriors <-  function(set_prior, seed_num) {
                                model_result <- brm(response ~ Field + keyword_batch_comp + 
