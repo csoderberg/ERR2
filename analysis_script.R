@@ -236,9 +236,6 @@ for_descriptive %>%
            # hide correlation coefficient on the principal diagonal
            diag=FALSE 
   )
-  
-
-#### Exploratory Analyses ####
 
 #### within model with DVs as ML component ####
 mlm_dvs_data <- wide_data %>%
@@ -294,7 +291,9 @@ main_graph_creation <- function(data) {
     mutate(dv = as.factor(dv),
            dv = fct_reorder(dv, dv_mean)) %>%
     ggplot(aes(y = dv, x = dv_estimates, fill = stat(x <= 0))) +
-    stat_halfeye(point_interval = mean_qi, .width = c(.95, .8)) +
+    stat_halfeye(point_interval = mean_qi, .width = c(.95, .8),
+                 interval_size_range = c(0.5, 1),
+                 fatten_point = 1.5) +
     scale_x_continuous(breaks=seq(-.5, 1.5, .5),
                        limits = c(-.75, 1.8),
                        name = 'Difference between RR and non-RR articles') +
@@ -302,8 +301,8 @@ main_graph_creation <- function(data) {
     theme_minimal() +
     theme(legend.position = "none",
           axis.title.y = element_blank(),
-          axis.title.x = element_text(size = 16),
-          axis.text = element_text(size = 16),
+          axis.title.x = element_text(size = 7),
+          axis.text = element_text(size = 7),
           panel.grid.major.y = element_blank(),
           panel.grid.minor.y = element_blank())
 }
@@ -329,7 +328,7 @@ intro_qs <- with_alldvs_graph_nums %>%
         axis.title.x = element_blank(),
         axis.ticks.x = element_blank()) +
   ggtitle('Evaluation before knowing study outcomes') +
-  theme(plot.title = element_text(face = 'bold', size = 18))
+  theme(plot.title = element_text(face = 'bold', size = 7))
 
 ## graph for results questions
 results_qs <- with_alldvs_graph_nums %>%
@@ -352,7 +351,7 @@ results_qs <- with_alldvs_graph_nums %>%
         axis.title.x = element_blank(),
         axis.ticks.x = element_blank()) +
   ggtitle('Evaluation after knowing study outcomes') +
-  theme(plot.title = element_text(face = 'bold', size = 18))
+  theme(plot.title = element_text(face = 'bold', size = 7))
 
 ## graph fo abstract questions
 abstract_qs <- with_alldvs_graph_nums %>%
@@ -367,13 +366,27 @@ abstract_qs <- with_alldvs_graph_nums %>%
                 main_graph_creation() +
   scale_fill_manual(values = c("#ccebc5", "gray80"))+
   ggtitle('Evaluation after finishing the paper') +
-  theme(plot.title = element_text(face = 'bold', size = 18),
+  theme(plot.title = element_text(face = 'bold', size = 7),
         axis.title.x = element_text(hjust = .15, vjust = 0))
 
 ## combine graphs
 combined_plot <- intro_qs / results_qs / abstract_qs + plot_layout(heights = c(8, 7, 4))
 combined_plot
 
+ggsave(file = 'main_fig.pdf', combined_plot, width = 18, height = 18.5, units = 'cm', dpi = 300)
+
+# calculate cohen's dz-esq metric for each DV in within-subj mlm
+
+# sd difference per question
+ysd_diff <- mlm_dvs_data %>% 
+  group_by(questions) %>% 
+  summarise(mean = mean(response, na.rm = T), sd = sd(response, na.rm = T))
+
+# effect across DVs in standardized metric
+within_alldvs %>%
+  spread_draws(b_Intercept, r_questions[dv,]) %>%
+  left_join(ysd_diff, by = c('dv' = 'questions')) %>%
+  mean_qi(mean = (b_Intercept + r_questions)/sd)
 
 #### Btw subjects model with DV as ML ####
 between_model_mlm <- brm(response ~ Field + keyword_batch_comp + article_type + Match + article_type*Match +
@@ -520,7 +533,7 @@ posteriors_by_guessing %>%
 ##### Supplemental Analyses #####
 
 #### Correlations between DVs ####
-png(height = 600, width = 600, file = 'dv_corrs.png')
+jpeg(height = 18.3, width = 18.3, units = 'cm', res = 300, file = 'dv_corrs.jpeg')
 
 wide_data %>%
   select(starts_with('diff')) %>%
@@ -580,6 +593,7 @@ within_alldvs_model_table <- rbind(within_alldvs_model_results$fixed %>%
     )
   ) %>% 
   tab_options(
+    table.font.size = px(7),
     row_group.border.top.width = px(3),
     row_group.border.top.color = "black",
     row_group.border.bottom.color = "black",
@@ -593,6 +607,10 @@ within_alldvs_model_table <- rbind(within_alldvs_model_results$fixed %>%
   )
 
 gtsave(within_alldvs_model_table, 'within_alldvs_model_table.rtf')  
+
+jpeg(file = 'test.jpeg', width = 8.9, height = 8.9, units = 'cm', res = 300)
+within_alldvs_model_table
+dev.off() 
 
 # table of point estimates & CrI by DV
 within_alldvs_dv_posteriors <- within_alldvs %>%
@@ -736,7 +754,9 @@ familiarity_by_dv_graph <- within_alldvs_familiar %>%
                         DV == 'diff_result_quality' ~ 'Qualt Results',
                         DV == 'diff_result_innovative' ~ 'Innovative Result')) %>%
   ggplot(aes(y = familiar_level, x = cond_mean, xmin = .lower, xmax = .upper)) +
-  geom_pointinterval(position=position_dodge(width=1)) +
+  geom_pointinterval(interval_size_range = c(0.5, 1), 
+                     fatten_point = 1.25,
+                     position=position_dodge(width=1)) +
   geom_vline(xintercept = 0) +
   facet_wrap(~ DV) +
   scale_x_continuous(breaks=seq(-1, 2, 1),
@@ -744,12 +764,15 @@ familiarity_by_dv_graph <- within_alldvs_familiar %>%
                      name = 'Difference between RR and non-RR articles') +
   theme_minimal() +
   theme(axis.title.y = element_blank(),
-        axis.title.x = element_text(size = 16),
-        axis.text = element_text(size = 16),
+        axis.title.x = element_text(size = 7),
+        axis.text = element_text(size = 7),
         panel.grid.minor.y = element_blank(),
-        strip.text = element_text(size=16))
+        strip.text = element_text(size=7))
 
 familiarity_by_dv_graph
+
+ggsave('familiarity_by_dv_graph.jpeg', familiarity_by_dv_graph, device = 'jpeg', dpi = 300, width = 18.3, height = 18.3, units = 'cm')
+
 
 #### Improve variable exploratory analysis supplement ####
 
@@ -848,7 +871,9 @@ improve_by_dv_graph <- within_alldvs_improve %>%
                         DV == 'diff_result_quality' ~ 'Qualt Results',
                         DV == 'diff_result_innovative' ~ 'Innovative Result')) %>%
   ggplot(aes(y = improve_level, x = cond_mean, xmin = .lower, xmax = .upper)) +
-  geom_pointinterval(position=position_dodge(width=1)) +
+  geom_pointinterval(interval_size_range = c(0.5, 1), 
+                     fatten_point = 1.25,
+                     position=position_dodge(width=1)) +
   geom_vline(xintercept = 0) +
   facet_wrap(~ DV) +
   scale_x_continuous(breaks=seq(-1, 2, 1),
@@ -856,12 +881,14 @@ improve_by_dv_graph <- within_alldvs_improve %>%
                      name = 'Difference between RR and non-RR articles') +
   theme_minimal() +
   theme(axis.title.y = element_blank(),
-        axis.title.x = element_text(size = 16),
-        axis.text = element_text(size = 16),
+        axis.title.x = element_text(size = 7),
+        axis.text = element_text(size = 7),
         panel.grid.minor.y = element_blank(),
-        strip.text = element_text(size=16))
+        strip.text = element_text(size=7))
 
 improve_by_dv_graph 
+
+ggsave('improve_by_dv_graph.jpeg', improve_by_dv_graph, device = 'jpeg', dpi = 300, width = 18.3, height = 18.3, units = 'cm')
   
 #### supplementary info about guessing model ####
 
@@ -964,7 +991,9 @@ guessed_by_dv_graph <- posteriors_by_guessing %>%
                         DV == 'diff_result_quality' ~ 'Qualt Results',
                         DV == 'diff_result_innovative' ~ 'Innovative Result')) %>%
   ggplot(aes(y = guessed, x = mean, xmin = .lower, xmax = .upper)) +
-  geom_pointinterval(position=position_dodge(width=1)) +
+  geom_pointinterval(interval_size_range = c(0.5, 1), 
+                     fatten_point = 1.25,
+                     position=position_dodge(width=1)) +
   geom_vline(xintercept = 0) +
   facet_wrap(~ DV) +
   scale_x_continuous(breaks=seq(-1, 2, 1),
@@ -972,12 +1001,15 @@ guessed_by_dv_graph <- posteriors_by_guessing %>%
                      name = 'Difference between RR and non-RR articles') +
   theme_minimal() +
   theme(axis.title.y = element_blank(),
-        axis.title.x = element_text(size = 16),
-        axis.text = element_text(size = 16),
+        axis.title.x = element_text(size = 7),
+        axis.text = element_text(size = 7),
         panel.grid.minor.y = element_blank(),
-        strip.text = element_text(size=16))
+        strip.text = element_text(size=7))
 
 guessed_by_dv_graph
+
+ggsave('guessed_by_dv_graph.jpeg', guessed_by_dv_graph, device = 'jpeg', dpi = 300, width = 18.3, height = 13.3, units = 'cm')
+
 
 #### models and comparison graphs for between subjects individual DV models ####
 
